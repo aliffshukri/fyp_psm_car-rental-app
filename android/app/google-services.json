@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "644477378453",
+    "project_id": "psm-app-16965",
+    "storage_bucket": "psm-app-16965.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:644477378453:android:ceeffd9f20639ccedba09c",
+        "android_client_info": {
+          "package_name": "com.example.fyp_psm"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAlSpYLIeMsMqDZwWvgQAOJDy15QGBcav0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
