@@ -1,18 +1,19 @@
-import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:fyp_psm/pages/login_page.dart';
-import 'package:fyp_psm/staff/cust_booking_page.dart';
+import 'package:fyp_psm/staff/car_rental_page.dart';
 import 'package:fyp_psm/staff/report_page.dart';
 import 'package:fyp_psm/staff/track_page.dart';
-import 'package:fyp_psm/staff/verification_page.dart'; // Import the verification page
+import 'package:fyp_psm/staff/verification_page.dart';
 
-class StaffCarRentalPage extends StatefulWidget {
+class CustomerBookingPage extends StatefulWidget {
+  const CustomerBookingPage({super.key});
+
   @override
-  _StaffCarRentalPageState createState() => _StaffCarRentalPageState();
+  State<CustomerBookingPage> createState() => _CustomerBookingPageState();
 }
 
-class _StaffCarRentalPageState extends State<StaffCarRentalPage> {
-
+class _CustomerBookingPageState extends State<CustomerBookingPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -48,16 +49,9 @@ class _StaffCarRentalPageState extends State<StaffCarRentalPage> {
       ),
       body: Center(
         child: Text(
-          "Staff Car Rental Page", // Placeholder text for the main page
+          "Customer Booking Page", // Placeholder text for the main page
           style: TextStyle(fontSize: 20),
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Handle the '+' button press (Add functionality)
-        },
-        child: Icon(Icons.add),
-        backgroundColor: Color.fromARGB(255, 173, 129, 80), // Change FAB background color
       ),
       bottomNavigationBar: BottomNavigationBar(
         items: [
@@ -71,7 +65,7 @@ class _StaffCarRentalPageState extends State<StaffCarRentalPage> {
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.book, size: 24),
-            label: 'Customer Booking',
+            label: 'Cust Booking',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.map, size: 24),
@@ -84,7 +78,7 @@ class _StaffCarRentalPageState extends State<StaffCarRentalPage> {
         ],
         selectedItemColor: Colors.black,
         unselectedItemColor: Colors.grey, // Set unselected item color
-        currentIndex: 1,
+        currentIndex: 2, // Set the default selected index to "Verification"
         onTap: (int index) {
           // Handle bottom navigation item taps here
           switch (index) {
@@ -97,13 +91,13 @@ class _StaffCarRentalPageState extends State<StaffCarRentalPage> {
               break;
             case 1:
               // Navigate to car details page (Main page)
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => StaffCarRentalPage()),
+              );
               break;
             case 2:
               // Navigate to customer booking page
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => CustomerBookingPage()),
-              );
               break;
             case 3:
               // Navigate to map page
