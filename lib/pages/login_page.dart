@@ -1,11 +1,10 @@
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:fyp_psm/pages/home_page.dart';
 import 'package:fyp_psm/pages/register_page.dart';
 import 'package:fyp_psm/pages/status_page.dart';
+import 'package:fyp_psm/staff/car_rental_page.dart';
 import 'package:google_fonts/google_fonts.dart';
-
 
 class LoginPage extends StatefulWidget {
   final VoidCallback showRegisterPage;
@@ -16,16 +15,35 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-
-  //text controller
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  String _role = ''; // Track selected role
 
   Future<void> logIn(BuildContext context) async {
-  // Show a loading indicator while logging in
+  if (_role.isEmpty) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Role not selected"),
+          content: Text("Please select your role."),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+    return; // Exit the function if role not selected
+  }
+
   showDialog(
     context: context,
-    barrierDismissible: false, // Prevent user from dismissing the dialog
+    barrierDismissible: false,
     builder: (BuildContext context) {
       return Center(
         child: CircularProgressIndicator(),
@@ -34,33 +52,58 @@ class _LoginPageState extends State<LoginPage> {
   );
 
   try {
-    await FirebaseAuth.instance.signInWithEmailAndPassword(
-      email: _emailController.text.trim(), 
-      password: _passwordController.text.trim(),
-    );
+    if (_role == 'Customer') {
+      // Check if entered credentials match admin credentials
+      String adminEmail = 'admin@carapp.com'; // Admin email
+      String adminPassword = 'admin@123'; // Admin password
+      String enteredEmail = _emailController.text.trim();
+      String enteredPassword = _passwordController.text.trim();
+      if (enteredEmail == adminEmail && enteredPassword == adminPassword) {
+        // If admin credentials used for customer role, show error message
+        throw Exception("Admin credentials cannot be used to log in as a customer.");
+      }
+      
+      // Perform customer login using Firebase
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: enteredEmail, 
+        password: enteredPassword,
+      );
+    } else if (_role == 'Admin') {
+      // Check if the entered credentials are for admin
+      String adminEmail = 'admin@carapp.com'; // Change to your admin email
+      String adminPassword = 'admin@123'; // Change to your admin password
+      String enteredEmail = _emailController.text.trim();
+      String enteredPassword = _passwordController.text.trim();
+      if (enteredEmail == adminEmail && enteredPassword == adminPassword) {
+        // Navigate to StaffCarRentalPage after successful admin login
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => StaffCarRentalPage()),
+        );
+        return; // Exit the function after navigation
+      } else {
+        // If selected role is Admin but entered credentials don't match admin credentials
+        throw Exception("Incorrect admin credentials");
+      }
+    }
 
-    // Close the loading indicator
     Navigator.of(context, rootNavigator: true).pop();
 
-    // Navigate to HomePage after successful login
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => HomePage()),
     );
   } catch (e) {
-    // Close the loading indicator
     Navigator.of(context, rootNavigator: true).pop();
 
-    // Handle login failure if needed
     print("Login failed: $e");
     
-    // You can show an error message to the user if needed
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text("Login Error"),
-          content: Text("User not found. Please try again."),
+          content: Text("User not found or incorrect credentials. Please try again."),
           actions: [
             TextButton(
               onPressed: () {
@@ -75,14 +118,15 @@ class _LoginPageState extends State<LoginPage> {
   }
 }
 
-  
+
+
   @override
   void dispose(){
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -93,14 +137,11 @@ class _LoginPageState extends State<LoginPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Logo
                 Image.asset(
                   'image/KSJ logo.jpg', 
                   height: 200, 
                 ),
                 SizedBox(height: 40),
-                
-                // Welcome text
                 Text(
                   'Welcome to Kereta Sewa Jimat App',
                   style: GoogleFonts.bebasNeue(fontSize: 34),
@@ -111,8 +152,6 @@ class _LoginPageState extends State<LoginPage> {
                   style: TextStyle(fontSize: 20),
                 ),
                 SizedBox(height: 20),
-
-                // Email
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 25.0),
                   child: Container(
@@ -120,7 +159,7 @@ class _LoginPageState extends State<LoginPage> {
                       color: Colors.grey[200],
                       border: Border.all(color: Colors.white),
                       borderRadius: BorderRadius.circular(12),
-                    ), // BoxDecoration
+                    ),
                     child: Padding(
                       padding: const EdgeInsets.only(left: 20.0),
                       child: TextField(
@@ -134,8 +173,6 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
                 SizedBox(height: 20),
-            
-                // Password
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 25.0),
                   child: Container(
@@ -143,7 +180,7 @@ class _LoginPageState extends State<LoginPage> {
                       color: Colors.grey[200],
                       border: Border.all(color: Colors.white),
                       borderRadius: BorderRadius.circular(12),
-                    ), // BoxDecoration
+                    ),
                     child: Padding(
                       padding: const EdgeInsets.only(left: 20.0),
                       child: TextField(
@@ -157,9 +194,33 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                 ),
-                SizedBox(height: 40),
-            
-                // Login button
+                SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Radio<String>(
+                      value: 'Customer',
+                      groupValue: _role,
+                      onChanged: (String? value) {
+                        setState(() {
+                          _role = value!;
+                        });
+                      },
+                    ),
+                    Text('Customer'),
+                    Radio<String>(
+                      value: 'Admin',
+                      groupValue: _role,
+                      onChanged: (String? value) {
+                        setState(() {
+                          _role = value!;
+                        });
+                      },
+                    ),
+                    Text('Admin'),
+                  ],
+                ),
+                SizedBox(height: 20),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 25.0),
                   child: GestureDetector(
@@ -183,8 +244,6 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
                 SizedBox(height: 10),
-            
-                // Track btn
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 25.0),
                   child:GestureDetector(
@@ -210,8 +269,6 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
                 SizedBox(height: 25),
-            
-                // Not a member? Register now
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -223,7 +280,6 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     GestureDetector(
                       onTap: () {
-                        // Redirect to RegisterPage when "Register Here" is clicked
                         Navigator.push(
                           context,
                           MaterialPageRoute(builder: (context) => RegisterPage()),
