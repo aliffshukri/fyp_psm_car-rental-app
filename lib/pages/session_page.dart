@@ -18,6 +18,7 @@ class _SessionPageState extends State<SessionPage> {
       key: _scaffoldKey,
       backgroundColor: Color.fromARGB(255, 178, 191, 83),
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         centerTitle: true,
         title: Text(
           "Session Management",

@@ -259,6 +259,7 @@ class _RegisterPageState extends State<RegisterPage> {
       'icNumber': _icNumberController.text,
       'address': _addressController.text,
       'phoneNumber': _phoneNumberController.text,
+      'email': _emailController.text,
       // Add more fields as needed
     });
 
@@ -269,10 +270,10 @@ class _RegisterPageState extends State<RegisterPage> {
     // Step 5: Show success pop-up message
     _showPopUpMessage('Submission Successful', 'Your registration was successful!');
 
-    // Step 6: Navigate to the next screen (e.g., StatusPage)
+    // Step 6: Navigate to the next screen
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => TrackStatus()),
+      MaterialPageRoute(builder: (context) => LoginPage(showRegisterPage: () {  },)),
         );
   } catch (e) {
     print("Registration failed: $e");

@@ -4,7 +4,7 @@ import 'package:fyp_psm/pages/login_page.dart';
 import 'package:fyp_psm/staff/car_rental_page.dart';
 import 'package:fyp_psm/staff/report_page.dart';
 import 'package:fyp_psm/staff/track_page.dart';
-import 'package:fyp_psm/staff/verification_page.dart';
+import 'package:fyp_psm/staff/custdetails_page.dart';
 
 class CustomerBookingPage extends StatefulWidget {
   const CustomerBookingPage({super.key});
@@ -86,7 +86,7 @@ class _CustomerBookingPageState extends State<CustomerBookingPage> {
               // Navigate to verification page
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (context) => VerificationPage()),
+                MaterialPageRoute(builder: (context) => CustDetailsPage()),
               );
               break;
             case 1:
