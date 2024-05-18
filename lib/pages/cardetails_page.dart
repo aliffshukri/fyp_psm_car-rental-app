@@ -1,5 +1,3 @@
-// ignore_for_file: prefer_const_constructors
-
 import 'package:flutter/material.dart';
 
 class CarDetailsPage extends StatefulWidget {
@@ -26,6 +24,8 @@ class CarDetailsPage extends StatefulWidget {
 }
 
 class _CarDetailsPageState extends State<CarDetailsPage> {
+  String? selectedPeriod; // Variable to hold the selected period
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -78,7 +78,7 @@ class _CarDetailsPageState extends State<CarDetailsPage> {
                   onPressed: () {
                     _showRentalPeriodBottomSheet(context);
                   },
-                  child: Text('Select Rental Period'),
+                  child: Text(selectedPeriod ?? 'Select Rental Period'), // Show selected period or default text
                 ),
               ],
             ),
@@ -109,10 +109,10 @@ class _CarDetailsPageState extends State<CarDetailsPage> {
                 ),
                 SizedBox(height: 12),
                 _buildRentalPeriodItem('1 Hour'),
-                _buildRentalPeriodItem('2 Hours'),
-                _buildRentalPeriodItem('4 Hours'),
-                _buildRentalPeriodItem('6 Hours'),
-                _buildRentalPeriodItem('12 Hours'),
+                _buildRentalPeriodItem('2 Hour'),
+                _buildRentalPeriodItem('4 Hour'),
+                _buildRentalPeriodItem('6 Hour'),
+                _buildRentalPeriodItem('12 Hour'),
               ],
             ),
           ),
@@ -128,9 +128,10 @@ class _CarDetailsPageState extends State<CarDetailsPage> {
         textAlign: TextAlign.center,
       ),
       onTap: () {
-        // Handle the selected rental period
-        // You can use the selected period as needed
-        print('Selected Rental Period: $period');
+        // Set the selected period and update the button text
+        setState(() {
+          selectedPeriod = period;
+        });
         Navigator.pop(context); // Close the bottom sheet
       },
     );

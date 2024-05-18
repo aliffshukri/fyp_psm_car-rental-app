@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fyp_psm/pages/login_page.dart';
+import 'package:fyp_psm/staff/car_rental_add.dart';
 import 'package:fyp_psm/staff/cust_booking_page.dart';
+import 'package:fyp_psm/staff/rental_period_page.dart';
 import 'package:fyp_psm/staff/report_page.dart';
 import 'package:fyp_psm/staff/track_page.dart';
 import 'package:fyp_psm/staff/custdetails_page.dart';
+import 'package:fyp_psm/staff/car_rental_edit.dart';  
 
 class StaffCarRentalPage extends StatefulWidget {
   @override
@@ -12,6 +16,11 @@ class StaffCarRentalPage extends StatefulWidget {
 }
 
 class _StaffCarRentalPageState extends State<StaffCarRentalPage> {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  Future<void> _deleteCar(String id) async {
+    await _firestore.collection('rentalCar').doc(id).delete();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,15 +55,85 @@ class _StaffCarRentalPageState extends State<StaffCarRentalPage> {
         elevation: 0,
         backgroundColor: Color.fromARGB(255, 173, 129, 80),
       ),
-      body: Center(
-        child: Text(
-          "Staff Car Rental Page", // Placeholder text for the main page
-          style: TextStyle(fontSize: 20),
-        ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: _firestore.collection('rentalCar').snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          }
+          final cars = snapshot.data?.docs ?? [];
+          return ListView.builder(
+            itemCount: cars.length,
+            itemBuilder: (context, index) {
+              final car = cars[index];
+              return ListTile(
+                title: Text('${car['brand']} ${car['carModel']}'),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.edit),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => CarRentalEdit(carId: car.id),
+                          ),
+                        );
+                      },
+                    ),
+                    IconButton(
+                    icon: Icon(Icons.access_time_rounded), // Icon for setting rental period
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => PeriodPrice(carId: car.id),
+                        ),
+                      );
+                    },
+                  ),
+                    IconButton(
+                      icon: Icon(Icons.delete),
+                      onPressed: () async {
+                        final confirm = await showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: Text('Delete Car'),
+                            content: Text('Are you sure you want to delete this car?'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(false),
+                                child: Text('No'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(true),
+                                child: Text('Yes'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirm) {
+                          await _deleteCar(car.id);
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              );
+            },
+          );
+        },
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // Handle the '+' button press (Add functionality)
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => CarRentalAdd()),
+          );
         },
         child: Icon(Icons.add),
         backgroundColor: Color.fromARGB(255, 173, 129, 80), // Change FAB background color
