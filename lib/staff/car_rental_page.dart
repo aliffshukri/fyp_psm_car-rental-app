@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fyp_psm/pages/login_page.dart';
+import 'package:fyp_psm/staff/car_plate_num.dart';
 import 'package:fyp_psm/staff/car_rental_add.dart';
 import 'package:fyp_psm/staff/cust_booking_page.dart';
-import 'package:fyp_psm/staff/rental_period_page.dart';
 import 'package:fyp_psm/staff/report_page.dart';
 import 'package:fyp_psm/staff/track_page.dart';
 import 'package:fyp_psm/staff/custdetails_page.dart';
@@ -86,12 +86,12 @@ class _StaffCarRentalPageState extends State<StaffCarRentalPage> {
                       },
                     ),
                     IconButton(
-                    icon: Icon(Icons.access_time_rounded), // Icon for setting rental period
+                    icon: Icon(Icons.car_crash_outlined), // Icon for setting rental period
                     onPressed: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => PeriodPrice(carId: car.id),
+                          builder: (context) => CarPlateNumber(carId: car.id),
                         ),
                       );
                     },

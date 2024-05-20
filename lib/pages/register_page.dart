@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:fyp_psm/pages/login_page.dart';
-import 'package:fyp_psm/pages/status_page.dart';
 import 'package:fyp_psm/pages/terms_page.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';

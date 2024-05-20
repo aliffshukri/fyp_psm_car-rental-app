@@ -19,6 +19,7 @@ class _CarRentalEditState extends State<CarRentalEdit> {
   late TextEditingController _numberOfSeatsController;
   late TextEditingController _transmissionTypeController;
   late TextEditingController _yearController;
+  late TextEditingController _quantityController;
   late DocumentReference _carRef;
   bool _isLoading = true;
 
@@ -38,6 +39,7 @@ class _CarRentalEditState extends State<CarRentalEdit> {
     _numberOfSeatsController = TextEditingController();
     _transmissionTypeController = TextEditingController();
     _yearController = TextEditingController();
+    _quantityController = TextEditingController(); // Initialize quantity controller
   }
 
   Future<void> _loadCarData() async {
@@ -53,16 +55,8 @@ class _CarRentalEditState extends State<CarRentalEdit> {
           _numberOfSeatsController.text = (carData['numberOfSeats'] ?? '').toString();
           _transmissionTypeController.text = carData['transmissionType'] ?? '';
           _yearController.text = (carData['year'] ?? '').toString();
+          _quantityController.text = (carData['quantity'] ?? '').toString(); // Load quantity data
           _isLoading = false;
-
-          // Debug prints
-          print('Brand: ${_brandController.text}');
-          print('Car Model: ${_carModelController.text}');
-          print('Car Type: ${_carTypeController.text}');
-          print('Fuel Tank Capacity: ${_fuelTankCapacityController.text}');
-          print('Number of Seats: ${_numberOfSeatsController.text}');
-          print('Transmission Type: ${_transmissionTypeController.text}');
-          print('Year: ${_yearController.text}');
         });
       } else {
         setState(() {
@@ -92,6 +86,7 @@ class _CarRentalEditState extends State<CarRentalEdit> {
           'numberOfSeats': int.parse(_numberOfSeatsController.text),
           'transmissionType': _transmissionTypeController.text,
           'year': int.parse(_yearController.text),
+          'quantity': int.parse(_quantityController.text), // Include quantity in Firestore update
         });
         Navigator.of(context).pop();
       } catch (e) {
@@ -112,6 +107,7 @@ class _CarRentalEditState extends State<CarRentalEdit> {
     _numberOfSeatsController.dispose();
     _transmissionTypeController.dispose();
     _yearController.dispose();
+    _quantityController.dispose(); // Dispose of quantity controller
     super.dispose();
   }
 
@@ -176,6 +172,11 @@ class _CarRentalEditState extends State<CarRentalEdit> {
                           controller: _yearController,
                           label: 'Year',
                           validator: (value) => value!.isEmpty ? 'Please enter the year' : null,
+                        ),
+                        _buildTextFormField(
+                          controller: _quantityController,
+                          label: 'Quantity',
+                          validator: (value) => value!.isEmpty ? 'Please enter the quantity' : null,
                         ),
                         SizedBox(height: 20),
                         ElevatedButton(

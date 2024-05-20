@@ -15,12 +15,16 @@ class _CarRentalAddState extends State<CarRentalAdd> {
   late TextEditingController _numberOfSeatsController;
   late TextEditingController _transmissionTypeController;
   late TextEditingController _yearController;
+  late TextEditingController _quantityController;
+  late TextEditingController _priceHourController; // Controller for Price per Hour
   bool _isLoading = false;
+  List<TextEditingController> _plateNumberControllers = [];
 
   @override
   void initState() {
     super.initState();
     _initializeControllers();
+    _quantityController.addListener(_updatePlateNumberFields);
   }
 
   void _initializeControllers() {
@@ -31,32 +35,54 @@ class _CarRentalAddState extends State<CarRentalAdd> {
     _numberOfSeatsController = TextEditingController();
     _transmissionTypeController = TextEditingController();
     _yearController = TextEditingController();
+    _quantityController = TextEditingController(); // Initialize quantity controller
+    _priceHourController = TextEditingController(); // Initialize price per hour controller
+  }
+
+  void _updatePlateNumberFields() {
+    int quantity = int.tryParse(_quantityController.text) ?? 0;
+    setState(() {
+      _plateNumberControllers = List.generate(
+        quantity,
+        (index) => TextEditingController(),
+      );
+    });
   }
 
   Future<void> _addCarData() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
+  if (_formKey.currentState!.validate()) {
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      DocumentReference carDoc = await FirebaseFirestore.instance.collection('rentalCar').add({
+        'brand': _brandController.text,
+        'carModel': _carModelController.text,
+        'carType': _carTypeController.text,
+        'fuelTankCapacity': _fuelTankCapacityController.text,
+        'numberOfSeats': int.parse(_numberOfSeatsController.text),
+        'transmissionType': _transmissionTypeController.text,
+        'year': int.parse(_yearController.text),
+        'quantity': int.parse(_quantityController.text), // Add quantity to Firestore data
+        'priceHour': double.parse(_priceHourController.text), // Add price per hour to Firestore data as double
       });
-      try {
-        await FirebaseFirestore.instance.collection('rentalCar').add({
-          'brand': _brandController.text,
-          'carModel': _carModelController.text,
-          'carType': _carTypeController.text,
-          'fuelTankCapacity': _fuelTankCapacityController.text,
-          'numberOfSeats': int.parse(_numberOfSeatsController.text),
-          'transmissionType': _transmissionTypeController.text,
-          'year': int.parse(_yearController.text),
+
+      for (int i = 0; i < _plateNumberControllers.length; i++) {
+        await carDoc.collection('plateNumbers').add({
+          'plateNumber': _plateNumberControllers[i].text,
         });
-        Navigator.of(context).pop();
-      } catch (e) {
-        setState(() {
-          _isLoading = false;
-        });
-        print('Error adding car data: $e');
       }
+
+      Navigator.of(context).pop();
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      print('Error adding car data: $e');
     }
   }
+}
+
 
   @override
   void dispose() {
@@ -67,6 +93,9 @@ class _CarRentalAddState extends State<CarRentalAdd> {
     _numberOfSeatsController.dispose();
     _transmissionTypeController.dispose();
     _yearController.dispose();
+    _quantityController.dispose(); // Dispose of quantity controller
+    _priceHourController.dispose(); // Dispose of price per hour controller
+    _plateNumberControllers.forEach((controller) => controller.dispose());
     super.dispose();
   }
 
@@ -132,6 +161,18 @@ class _CarRentalAddState extends State<CarRentalAdd> {
                           label: 'Year',
                           validator: (value) => value!.isEmpty ? 'Please enter the year' : null,
                         ),
+                        _buildTextFormField(
+                          controller: _priceHourController,
+                          label: 'Price per Hour',
+                          validator: (value) => value!.isEmpty ? 'Please enter the price per hour' : null,
+                        ),
+                        _buildTextFormField(
+                          controller: _quantityController,
+                          label: 'Quantity',
+                          validator: (value) => value!.isEmpty ? 'Please enter the quantity' : null,
+                        ),
+                        
+                        if (_plateNumberControllers.isNotEmpty) ..._buildPlateNumberFields(),
                         SizedBox(height: 20),
                         ElevatedButton(
                           onPressed: _addCarData,
@@ -167,5 +208,15 @@ class _CarRentalAddState extends State<CarRentalAdd> {
         validator: validator,
       ),
     );
+  }
+
+  List<Widget> _buildPlateNumberFields() {
+    return List<Widget>.generate(_plateNumberControllers.length, (index) {
+      return _buildTextFormField(
+        controller: _plateNumberControllers[index],
+        label: 'Plate Number ${index + 1}',
+        validator: (value) => value!.isEmpty ? 'Please enter the plate number' : null,
+      );
+    });
   }
 }
