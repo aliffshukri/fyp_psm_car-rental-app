@@ -15,9 +15,9 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final user = FirebaseAuth.instance.currentUser!;
-  DateTime? selectedDate; // line for tracking selected date
-  String? selectedTime; // line for tracking selected time
-   List<String> timeOptions = ['9.00 AM', '12.00 PM', '2.00 PM', '4.00 PM', '6.00 PM'];
+  DateTime? selectedDate;
+  String? selectedTime;
+  List<String> timeOptions = ['9:00 AM', '12:00 PM', '2:00 PM', '4:00 PM', '6:00 PM'];
 
   @override
   Widget build(BuildContext context) {
@@ -33,21 +33,20 @@ class _HomePageState extends State<HomePage> {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Colors.white, // Change header text color
+                color: Colors.white,
               ),
             ),
             Text(
               "${user.email ?? 'user'}",
               style: TextStyle(
                 fontSize: 16,
-                color: Colors.white, // Change email text color
+                color: Colors.white,
               ),
             ),
           ],
         ),
         leading: IconButton(
           onPressed: () {
-            // Navigate to ProfileUpdatePage when the profile icon is clicked
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => ProfilePage()),
@@ -56,14 +55,13 @@ class _HomePageState extends State<HomePage> {
           icon: const Icon(
             Icons.person,
             size: 40.0,
-            color: Colors.white, // Change profile icon color
+            color: Colors.white,
           ),
         ),
         actions: [
           IconButton(
             onPressed: () async {
               await FirebaseAuth.instance.signOut();
-              // Navigate to the login page
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (context) => LoginPage(showRegisterPage: () {})),
@@ -72,12 +70,12 @@ class _HomePageState extends State<HomePage> {
             icon: const Icon(
               Icons.login,
               size: 40.0,
-              color: Colors.white, // Change login icon color
+              color: Colors.white,
             ),
           ),
         ],
         elevation: 0,
-        backgroundColor: Color.fromARGB(255, 173, 129, 80), // Change header background color
+        backgroundColor: Color.fromARGB(255, 173, 129, 80),
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -103,7 +101,7 @@ class _HomePageState extends State<HomePage> {
                         context: context,
                         builder: (BuildContext context) {
                           return Container(
-                            height: 400, // Adjust the height as needed
+                            height: 400,
                             child: Column(
                               children: [
                                 SizedBox(height: 16),
@@ -155,7 +153,7 @@ class _HomePageState extends State<HomePage> {
                         context: context,
                         builder: (BuildContext context) {
                           return Container(
-                            height: 200, // Adjust the height as needed
+                            height: 200,
                             child: Column(
                               children: [
                                 SizedBox(height: 16),
@@ -208,8 +206,6 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
           ),
-
-
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance.collection('rentalCar').snapshots(),
@@ -242,6 +238,7 @@ class _HomePageState extends State<HomePage> {
                       rentalCarData['transmissionType'],
                       rentalCarData['fuelTankCapacity'],
                       rentalCarData['priceHour'],
+                      snapshot.data!.docs[index].id,
                     );
                   },
                 );
@@ -268,21 +265,17 @@ class _HomePageState extends State<HomePage> {
         ],
         selectedItemColor: Colors.black,
         onTap: (int index) {
-          // Handle bottom navigation item taps here
           switch (index) {
             case 0:
-            
               break;
             case 1:
-              // Navigate to MyBooking page
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (context) => MyBookingPage()),
               );
               break;
             case 2:
-              // Navigate to Session page
-               Navigator.pushReplacement(
+              Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (context) => SessionPage()),
               );
@@ -294,76 +287,83 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildRentalCarItem(
-  String brand,
-  String carModel,
-  String carType,
-  int numberOfSeats,
-  int year,
-  String transmissionType,
-  String fuelTankCapacity,
-  double priceHour,
-) {
-  Map<String, dynamic> rentalCarData = {
-    'brand': brand,
-    'modelName': carModel,
-    'year': year,
-    'transmissionType': transmissionType,
-    'carType': carType,
-    'fuelTankCapacity': fuelTankCapacity,
-    'numSeats': numberOfSeats,
-    'priceHour': priceHour,
-  };
+    String brand,
+    String carModel,
+    String carType,
+    int numberOfSeats,
+    int year,
+    String transmissionType,
+    String fuelTankCapacity,
+    double priceHour,
+    String carId,
+  ) {
+    Map<String, dynamic> rentalCarData = {
+      'brand': brand,
+      'modelName': carModel,
+      'year': year,
+      'transmissionType': transmissionType,
+      'carType': carType,
+      'fuelTankCapacity': fuelTankCapacity,
+      'numSeats': numberOfSeats,
+      'priceHour': priceHour,
+      'carId': carId,
+    };
 
-  return Card(
-    elevation: 8,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(16.0),
-    ),
-    child: InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => CarDetailsPage(
-              brand: rentalCarData['brand'],
-              modelName: rentalCarData['modelName'],
-              year: rentalCarData['year'],
-              transmissionType: rentalCarData['transmissionType'],
-              carType: rentalCarData['carType'],
-              fuelTankCapacity: rentalCarData['fuelTankCapacity'],
-              numSeats: rentalCarData['numSeats'],
-              priceHour: rentalCarData['priceHour'],
-            ),
-          ),
-        );
-      },
-      splashColor: Colors.black,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            'Brand: $brand',
-            style: TextStyle(fontSize: 16.0),
-          ),
-          Text(
-            'Model: $carModel',
-            style: TextStyle(fontSize: 16.0),
-          ),
-          Text(
-            'Type: $carType',
-            style: TextStyle(fontSize: 16.0),
-          ),
-          Text(
-            'Seats: $numberOfSeats',
-            style: TextStyle(fontSize: 16.0),
-          ),
-        ],
+    return Card(
+      elevation: 8,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16.0),
       ),
-    ),
-  );
-}
-
-
+      child: InkWell(
+        onTap: (selectedDate != null && selectedTime != null) ? () {
+          try {
+            DateTime startDateTime = DateFormat('yyyy-MM-dd hh:mm a').parse("${DateFormat('yyyy-MM-dd').format(selectedDate!)} $selectedTime");
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => CarDetailsPage(
+                  brand: rentalCarData['brand'],
+                  modelName: rentalCarData['modelName'],
+                  year: rentalCarData['year'],
+                  transmissionType: rentalCarData['transmissionType'],
+                  carType: rentalCarData['carType'],
+                  fuelTankCapacity: rentalCarData['fuelTankCapacity'],
+                  numSeats: rentalCarData['numSeats'],
+                  priceHour: rentalCarData['priceHour'],
+                  selectedDateTime: startDateTime,
+                  carId: rentalCarData['carId'],
+                ),
+              ),
+            );
+          } catch (e) {
+            print('Error parsing date and time: $e');
+          }
+        } : null,
+        splashColor: Colors.black,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'Brand: $brand',
+              style: TextStyle(fontSize: 16.0),
+            ),
+            Text(
+              'Model: $carModel',
+              style: TextStyle(fontSize: 16.0),
+            ),
+            Text(
+              'Type: $carType',
+              style: TextStyle(fontSize: 16.0),
+            ),
+            Text(
+              'Seats: $numberOfSeats',
+              style: TextStyle(fontSize: 16.0),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildMenuItem(String title, IconData icon, VoidCallback onPressed) {
     return Card(

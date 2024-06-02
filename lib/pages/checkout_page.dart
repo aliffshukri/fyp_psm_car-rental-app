@@ -1,27 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
-
 import 'package:fyp_psm/pages/mybooking_page.dart';
+import 'package:intl/intl.dart';
 
 class CheckoutPage extends StatefulWidget {
-  final String startDate;
-  final String endDate;
   final String rentalPeriod;
   final String carBrand;
   final String carModel;
   final String carPlate;
-  //final String totalPrice;
+  final double totalPrice;
+  final DateTime startDateTime;
+  final DateTime endDateTime;
 
   const CheckoutPage({
     Key? key,
-    required this.startDate,
-    required this.endDate,
     required this.rentalPeriod,
     required this.carBrand,
     required this.carModel,
     required this.carPlate,
-    //required this.totalPrice,
+    required this.totalPrice, 
+    required this.endDateTime, 
+    required this.startDateTime,
   }) : super(key: key);
 
   @override
@@ -43,13 +46,59 @@ class _CheckoutPageState extends State<CheckoutPage> {
     }
   }
 
-  void _confirmBooking() {
-    // Navigate to MyBookingPage or perform any booking confirmation logic here
-    Navigator.push(
+    Future<void> _uploadReceiptAndConfirmBooking() async {
+  if (_receiptFile == null) return;
+
+  try {
+    // Upload receipt file to Firebase Storage
+    String fileName = 'receipts/${FirebaseAuth.instance.currentUser!.uid}/${DateTime.now().millisecondsSinceEpoch}.pdf';
+    Reference storageRef = FirebaseStorage.instance.ref().child(fileName);
+    UploadTask uploadTask = storageRef.putFile(_receiptFile!);
+    TaskSnapshot taskSnapshot = await uploadTask;
+    String receiptUrl = await taskSnapshot.ref.getDownloadURL();
+
+    // Fetch current user information
+    User? currentUser = FirebaseAuth.instance.currentUser;
+    String? displayName = currentUser?.displayName;
+    String? phoneNumber = currentUser?.phoneNumber;
+    String? email = currentUser?.email;
+
+    // Fetch user details from Firestore if not available in Auth
+    if (displayName == null || phoneNumber == null) {
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('customer').doc(currentUser!.uid).get();
+      displayName = userDoc['name'] ?? 'No name';
+      phoneNumber = userDoc['phoneNumber'] ?? 'No phone number';
+    }
+
+    // Create booking in Firestore
+    await FirebaseFirestore.instance.collection('booking').add({
+      'startDateTime': widget.startDateTime,
+      'endDateTime': widget.endDateTime,
+      'rentalPeriodHours': widget.rentalPeriod.contains('hour') ? widget.rentalPeriod : 0,
+      'rentalPeriodDays': widget.rentalPeriod.contains('day') ? widget.rentalPeriod : 0,
+      'totalPrice': widget.totalPrice,
+      'paymentProof': receiptUrl,
+      'plateNumber': widget.carPlate,
+      'brand': widget.carBrand,
+      'carModel': widget.carModel,
+      'name': displayName,
+      'phoneNumber': phoneNumber,
+      'email': email,
+    });
+
+    // Navigate to MyBookingPage
+    Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => MyBookingPage()),
     );
+  } catch (e) {
+    // Handle errors
+    print('Error uploading receipt and confirming booking: $e');
   }
+}
+
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -76,8 +125,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
             children: [
               // Rental Session Details
               _buildSection("Rental Session Details", [
-                _buildDetailRow("Start Date:", widget.startDate),
-                _buildDetailRow("End Date:", widget.endDate),
+                _buildDetailRow("Start Date & Time:", DateFormat('dd-MM-yyyy hh:mm a').format(widget.startDateTime)),
+                _buildDetailRow("End Date & Time:", DateFormat('dd-MM-yyyy hh:mm a').format(widget.endDateTime)),
                 _buildDetailRow("Rental Period:", widget.rentalPeriod),
               ]),
 
@@ -94,9 +143,23 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
               // Payment Details, Receipt Upload, and Confirm Booking Button
               _buildSection("Payment Details", [
-                //_buildDetailRow("Total Price:", widget.totalPrice),
+                _buildDetailRow("Total Price:", 'RM ${widget.totalPrice.toStringAsFixed(2)}'),
                 _buildDetailRow("Bank Account:", "123-456-789"),
-                const SizedBox(height: 16.0),
+                const SizedBox(height: 10),
+
+                Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Image.asset(
+                        'image/qr.jpg', 
+                        height: 200, 
+                      ),
+                      SizedBox(height: 10),
+                    ],
+                  ),
+                ),
+
                 _buildSectionTitle("Upload Payment Receipt"),
                 ElevatedButton(
                   onPressed: _pickReceiptFile,
@@ -107,7 +170,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 const SizedBox(height: 16.0),
                 Center(
                   child: ElevatedButton(
-                    onPressed: _isButtonEnabled ? _confirmBooking : null,
+                    onPressed: _isButtonEnabled ? _uploadReceiptAndConfirmBooking : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _isButtonEnabled ?  const Color.fromARGB(255, 173, 129, 80) : Colors.grey,
                     ),

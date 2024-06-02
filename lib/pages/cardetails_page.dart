@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:numberpicker/numberpicker.dart';
 import 'checkout_page.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:math';
 
 class CarDetailsPage extends StatefulWidget {
   final String? brand;
@@ -12,6 +14,7 @@ class CarDetailsPage extends StatefulWidget {
   final int? numSeats;
   final String? carId;
   final double? priceHour;
+  final DateTime selectedDateTime;
 
   const CarDetailsPage({
     this.brand,
@@ -22,7 +25,8 @@ class CarDetailsPage extends StatefulWidget {
     this.fuelTankCapacity,
     this.numSeats,
     this.carId,
-    this.priceHour,
+    this.priceHour, 
+    required this.selectedDateTime,
   });
 
   @override
@@ -43,62 +47,79 @@ class _CarDetailsPageState extends State<CarDetailsPage> {
     _calculateTotalPrice();
   }
 
+  Future<String> _fetchRandomPlateNumber() async {
+    final plateNumbersSnapshot = await FirebaseFirestore.instance
+        .collection('rentalCar')
+        .doc(widget.carId)
+        .collection('plateNumbers')
+        .get();
+    final plateNumbers = plateNumbersSnapshot.docs.map((doc) => doc['plateNumber'] as String).toList();
+    final random = Random();
+    return plateNumbers[random.nextInt(plateNumbers.length)];
+  }
+
   void _calculateTotalPrice() {
-  double tempTotalPrice = 0.0;
+    double tempTotalPrice = 0.0;
 
-  if (rentalType == 'Hours') {
-    if (rentalPeriod == 1) {
-      tempTotalPrice = priceHour; // 1 hour = price per hour
-    } else if (rentalPeriod <= 12) {
-      tempTotalPrice = priceHour + (rentalPeriod - 1) * (priceHour - 0.25);
-    } else {
-      // After the 12th hour, linearly decrease the price
-      tempTotalPrice = priceHour + 11 * (priceHour - 0.25) - (rentalPeriod - 12) * 0.25;
+    if (rentalType == 'Hours') {
+      if (rentalPeriod == 1) {
+        tempTotalPrice = priceHour; // 1 hour = price per hour
+      } else if (rentalPeriod <= 12) {
+        tempTotalPrice = priceHour + (rentalPeriod - 1) * (priceHour - 0.25);
+      } else {
+        // After the 12th hour, linearly decrease the price
+        tempTotalPrice = priceHour + 11 * (priceHour - 0.25) - (rentalPeriod - 12) * 0.25;
+      }
+    } else { // rentalType == 'Days'
+      double baseRate;
+      switch (rentalPeriod) {
+        case 1:
+          baseRate = 24 * priceHour;
+          tempTotalPrice = baseRate - (baseRate * 0.30); // ~15% discount for 1 day
+          break;
+        case 2:
+          baseRate = 48 * priceHour;
+          tempTotalPrice = baseRate - (baseRate * 0.30); // ~25% discount for 2 days
+          break;
+        case 3:
+          baseRate = 72 * priceHour;
+          tempTotalPrice = baseRate - (baseRate * 0.30); // ~30% discount for 3 days
+          break;
+        case 4:
+          baseRate = 96 * priceHour;
+          tempTotalPrice = baseRate - (baseRate * 0.30); // ~30% discount for 4 days
+          break;
+        case 5:
+          baseRate = 120 * priceHour;
+          tempTotalPrice = baseRate - (baseRate * 0.30); // ~30% discount for 5 days
+          break;
+        case 6:
+          baseRate = 144 * priceHour;
+          tempTotalPrice = baseRate - (baseRate * 0.35); // ~35% discount for 6 days
+          break;
+        case 7:
+          baseRate = 168 * priceHour;
+          tempTotalPrice = baseRate - (baseRate * 0.40); // ~40% discount for 7 days
+          break;
+        default:
+          tempTotalPrice = priceHour * rentalPeriod * 24; // Fallback logic for > 7 days
+      }
     }
-  } else { // rentalType == 'Days'
-    double baseRate;
-  switch (rentalPeriod) {
-    case 1:
-      baseRate = 24 * priceHour;
-      tempTotalPrice = baseRate - (baseRate * 0.30); // ~15% discount for 1 day
-      break;
-    case 2:
-      baseRate = 48 * priceHour;
-      tempTotalPrice = baseRate - (baseRate * 0.30); // ~25% discount for 2 days
-      break;
-    case 3:
-      baseRate = 72 * priceHour;
-      tempTotalPrice = baseRate - (baseRate * 0.30); // ~30% discount for 3 days
-      break;
-    case 4:
-      baseRate = 96 * priceHour;
-      tempTotalPrice = baseRate - (baseRate * 0.30); // ~30% discount for 4 days
-      break;
-    case 5:
-      baseRate = 120 * priceHour;
-      tempTotalPrice = baseRate - (baseRate * 0.30); // ~30% discount for 5 days
-      break;
-    case 6:
-      baseRate = 144 * priceHour;
-      tempTotalPrice = baseRate - (baseRate * 0.35); // ~35% discount for 6 days
-      break;
-    case 7:
-      baseRate = 168 * priceHour;
-      tempTotalPrice = baseRate - (baseRate * 0.40); // ~40% discount for 7 days
-      break;
-    default:
-      tempTotalPrice = priceHour * rentalPeriod * 24; // Fallback logic for > 7 days
+
+    setState(() {
+      totalPrice = tempTotalPrice;
+      isCheckoutEnabled = true;
+    });
   }
 
+  DateTime calculateEndDateTime() {
+    DateTime startDateTime = widget.selectedDateTime;
+    if (rentalType == 'Hours') {
+      return startDateTime.add(Duration(hours: rentalPeriod));
+    } else {
+      return startDateTime.add(Duration(days: rentalPeriod));
+    }
   }
-
-  setState(() {
-    totalPrice = tempTotalPrice;
-    isCheckoutEnabled = true;
-  });
-}
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -140,7 +161,7 @@ class _CarDetailsPageState extends State<CarDetailsPage> {
                   CarDetailItem(label: 'Year', value: widget.year?.toString()),
                   CarDetailItem(label: 'Transmission Type', value: widget.transmissionType),
                   CarDetailItem(label: 'Car Type', value: widget.carType),
-                  CarDetailItem(label: 'Fuel Tank Capacity', value: widget.fuelTankCapacity),
+                  CarDetailItem(label: 'Fuel Tank Capacity', value: '${widget.fuelTankCapacity} L'),
                   CarDetailItem(label: 'Number of Seats', value: widget.numSeats?.toString()),
                   CarDetailItem(label: 'Price per Hour', value: 'RM ${widget.priceHour?.toStringAsFixed(2)}'),
 
@@ -209,7 +230,7 @@ class _CarDetailsPageState extends State<CarDetailsPage> {
                             ),
                           ),
                           NumberPicker(
-                            itemWidth: 60, // Adjust the width to make it smaller
+                            itemWidth: 60,
                             minValue: 1,
                             maxValue: rentalType == 'Hours' ? 12 : 7,
                             value: rentalPeriod,
@@ -228,11 +249,23 @@ class _CarDetailsPageState extends State<CarDetailsPage> {
                   Center(
                     child: ElevatedButton(
                       onPressed: isCheckoutEnabled
-                          ? () {
+                          ? () async {
+                              // Fetch the random plate number
+                              String plateNumber = await _fetchRandomPlateNumber();
+
+                              // Navigate to CheckoutPage with the fetched plate number
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) =>  const CheckoutPage(startDate: '', endDate: '', rentalPeriod: '', carBrand: '', carModel: '', carPlate: '',),
+                                  builder: (context) => CheckoutPage(
+                                    startDateTime: widget.selectedDateTime,
+                                    endDateTime: calculateEndDateTime(),
+                                    rentalPeriod: '$rentalPeriod $rentalType',
+                                    carBrand: widget.brand ?? '',
+                                    carModel: widget.modelName ?? '',
+                                    carPlate: plateNumber, // Pass the fetched plate number
+                                    totalPrice: totalPrice,
+                                  ),
                                 ),
                               );
                             }
