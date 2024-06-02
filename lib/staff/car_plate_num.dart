@@ -11,7 +11,8 @@ class CarPlateNumber extends StatefulWidget {
 }
 
 class _CarPlateNumberState extends State<CarPlateNumber> {
-  List<String> _plateNumbers = [];
+  List<Map<String, dynamic>> _plateNumbers = [];
+  int _quantity = 0;
   TextEditingController _editPlateNumberController = TextEditingController();
   TextEditingController _newPlateNumberController = TextEditingController();
 
@@ -23,13 +24,20 @@ class _CarPlateNumberState extends State<CarPlateNumber> {
 
   void _loadPlateNumbers() async {
     try {
+      final carDoc = await FirebaseFirestore.instance
+          .collection('rentalCar')
+          .doc(widget.carId)
+          .get();
       final plateNumbersSnapshot = await FirebaseFirestore.instance
           .collection('rentalCar')
           .doc(widget.carId)
           .collection('plateNumbers')
           .get();
       setState(() {
-        _plateNumbers = plateNumbersSnapshot.docs.map((doc) => doc['plateNumber'] as String).toList();
+        _plateNumbers = plateNumbersSnapshot.docs
+            .map((doc) => {'id': doc.id, 'plateNumber': doc['plateNumber']})
+            .toList();
+        _quantity = _plateNumbers.length;
       });
     } catch (e) {
       print('Error loading plate numbers: $e');
@@ -37,35 +45,59 @@ class _CarPlateNumberState extends State<CarPlateNumber> {
   }
 
   Future<void> _editPlateNumber(String plateNumberId, String plateNumber) async {
-    // Implement editing of plate number
-    await FirebaseFirestore.instance
-        .collection('rentalCar')
-        .doc(widget.carId)
-        .collection('plateNumbers')
-        .doc(plateNumberId)
-        .update({'plateNumber': plateNumber});
-    _loadPlateNumbers();
+    try {
+      await FirebaseFirestore.instance
+          .collection('rentalCar')
+          .doc(widget.carId)
+          .collection('plateNumbers')
+          .doc(plateNumberId)
+          .update({'plateNumber': plateNumber});
+      _loadPlateNumbers();
+    } catch (e) {
+      print('Error editing plate number: $e');
+    }
   }
 
   Future<void> _deletePlateNumber(String plateNumberId) async {
-    // Implement deletion of plate number
-    await FirebaseFirestore.instance
-        .collection('rentalCar')
-        .doc(widget.carId)
-        .collection('plateNumbers')
-        .doc(plateNumberId)
-        .delete();
-    _loadPlateNumbers();
+    try {
+      await FirebaseFirestore.instance
+          .collection('rentalCar')
+          .doc(widget.carId)
+          .collection('plateNumbers')
+          .doc(plateNumberId)
+          .delete();
+      _updateQuantity(-1);
+    } catch (e) {
+      print('Error deleting plate number: $e');
+    }
   }
 
   Future<void> _addPlateNumber(String plateNumber) async {
-    // Implement addition of new plate number
-    await FirebaseFirestore.instance
-        .collection('rentalCar')
-        .doc(widget.carId)
-        .collection('plateNumbers')
-        .add({'plateNumber': plateNumber});
-    _loadPlateNumbers();
+    try {
+      await FirebaseFirestore.instance
+          .collection('rentalCar')
+          .doc(widget.carId)
+          .collection('plateNumbers')
+          .add({'plateNumber': plateNumber});
+      _updateQuantity(1);
+    } catch (e) {
+      print('Error adding plate number: $e');
+    }
+  }
+
+  Future<void> _updateQuantity(int change) async {
+    setState(() {
+      _quantity += change;
+    });
+    try {
+      await FirebaseFirestore.instance
+          .collection('rentalCar')
+          .doc(widget.carId)
+          .update({'quantity': _quantity});
+      _loadPlateNumbers();
+    } catch (e) {
+      print('Error updating quantity: $e');
+    }
   }
 
   @override
@@ -79,19 +111,23 @@ class _CarPlateNumberState extends State<CarPlateNumber> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Display existing plate numbers
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text('Quantity: $_quantity'),
+            ),
             ListView.builder(
               shrinkWrap: true,
               itemCount: _plateNumbers.length,
               itemBuilder: (context, index) {
                 return ListTile(
-                  title: Text(_plateNumbers[index]),
+                  title: Text(_plateNumbers[index]['plateNumber']),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
                         icon: Icon(Icons.edit),
                         onPressed: () {
+                          _editPlateNumberController.text = _plateNumbers[index]['plateNumber'];
                           showDialog(
                             context: context,
                             builder: (context) {
@@ -111,9 +147,10 @@ class _CarPlateNumberState extends State<CarPlateNumber> {
                                   ElevatedButton(
                                     onPressed: () {
                                       _editPlateNumber(
-                                        _plateNumbers[index], // Assuming the plate number is the ID
+                                        _plateNumbers[index]['id'],
                                         _editPlateNumberController.text,
                                       );
+                                      _editPlateNumberController.clear();
                                       Navigator.of(context).pop();
                                     },
                                     child: Text('Save'),
@@ -127,7 +164,7 @@ class _CarPlateNumberState extends State<CarPlateNumber> {
                       IconButton(
                         icon: Icon(Icons.delete),
                         onPressed: () {
-                          _deletePlateNumber(_plateNumbers[index]); // Assuming the plate number is the ID
+                          _deletePlateNumber(_plateNumbers[index]['id']);
                         },
                       ),
                     ],
@@ -135,7 +172,6 @@ class _CarPlateNumberState extends State<CarPlateNumber> {
                 );
               },
             ),
-            // Button to add new plate numbers
             ElevatedButton(
               onPressed: () {
                 showDialog(
@@ -157,6 +193,7 @@ class _CarPlateNumberState extends State<CarPlateNumber> {
                         ElevatedButton(
                           onPressed: () {
                             _addPlateNumber(_newPlateNumberController.text);
+                            _newPlateNumberController.clear();
                             Navigator.of(context).pop();
                           },
                           child: Text('Add'),

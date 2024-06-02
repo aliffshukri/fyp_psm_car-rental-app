@@ -241,6 +241,7 @@ class _HomePageState extends State<HomePage> {
                       rentalCarData['year'],
                       rentalCarData['transmissionType'],
                       rentalCarData['fuelTankCapacity'],
+                      rentalCarData['priceHour'],
                     );
                   },
                 );
@@ -300,6 +301,7 @@ class _HomePageState extends State<HomePage> {
   int year,
   String transmissionType,
   String fuelTankCapacity,
+  double priceHour,
 ) {
   Map<String, dynamic> rentalCarData = {
     'brand': brand,
@@ -309,6 +311,7 @@ class _HomePageState extends State<HomePage> {
     'carType': carType,
     'fuelTankCapacity': fuelTankCapacity,
     'numSeats': numberOfSeats,
+    'priceHour': priceHour,
   };
 
   return Card(
@@ -329,6 +332,7 @@ class _HomePageState extends State<HomePage> {
               carType: rentalCarData['carType'],
               fuelTankCapacity: rentalCarData['fuelTankCapacity'],
               numSeats: rentalCarData['numSeats'],
+              priceHour: rentalCarData['priceHour'],
             ),
           ),
         );

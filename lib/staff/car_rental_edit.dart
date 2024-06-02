@@ -19,7 +19,7 @@ class _CarRentalEditState extends State<CarRentalEdit> {
   late TextEditingController _numberOfSeatsController;
   late TextEditingController _transmissionTypeController;
   late TextEditingController _yearController;
-  late TextEditingController _quantityController;
+  late TextEditingController _priceHourController;
   late DocumentReference _carRef;
   bool _isLoading = true;
 
@@ -39,7 +39,7 @@ class _CarRentalEditState extends State<CarRentalEdit> {
     _numberOfSeatsController = TextEditingController();
     _transmissionTypeController = TextEditingController();
     _yearController = TextEditingController();
-    _quantityController = TextEditingController(); // Initialize quantity controller
+    _priceHourController = TextEditingController();
   }
 
   Future<void> _loadCarData() async {
@@ -55,7 +55,7 @@ class _CarRentalEditState extends State<CarRentalEdit> {
           _numberOfSeatsController.text = (carData['numberOfSeats'] ?? '').toString();
           _transmissionTypeController.text = carData['transmissionType'] ?? '';
           _yearController.text = (carData['year'] ?? '').toString();
-          _quantityController.text = (carData['quantity'] ?? '').toString(); // Load quantity data
+          _priceHourController.text = (carData['priceHour'] ?? '').toString();
           _isLoading = false;
         });
       } else {
@@ -86,7 +86,7 @@ class _CarRentalEditState extends State<CarRentalEdit> {
           'numberOfSeats': int.parse(_numberOfSeatsController.text),
           'transmissionType': _transmissionTypeController.text,
           'year': int.parse(_yearController.text),
-          'quantity': int.parse(_quantityController.text), // Include quantity in Firestore update
+          'priceHour': double.parse(_priceHourController.text), 
         });
         Navigator.of(context).pop();
       } catch (e) {
@@ -107,7 +107,7 @@ class _CarRentalEditState extends State<CarRentalEdit> {
     _numberOfSeatsController.dispose();
     _transmissionTypeController.dispose();
     _yearController.dispose();
-    _quantityController.dispose(); // Dispose of quantity controller
+    _priceHourController.dispose(); 
     super.dispose();
   }
 
@@ -174,9 +174,9 @@ class _CarRentalEditState extends State<CarRentalEdit> {
                           validator: (value) => value!.isEmpty ? 'Please enter the year' : null,
                         ),
                         _buildTextFormField(
-                          controller: _quantityController,
-                          label: 'Quantity',
-                          validator: (value) => value!.isEmpty ? 'Please enter the quantity' : null,
+                          controller: _priceHourController,
+                          label: 'Price per Hour',
+                          validator: (value) => value!.isEmpty ? 'Please enter the price per hour' : null,
                         ),
                         SizedBox(height: 20),
                         ElevatedButton(

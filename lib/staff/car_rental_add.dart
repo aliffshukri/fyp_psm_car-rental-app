@@ -16,7 +16,7 @@ class _CarRentalAddState extends State<CarRentalAdd> {
   late TextEditingController _transmissionTypeController;
   late TextEditingController _yearController;
   late TextEditingController _quantityController;
-  late TextEditingController _priceHourController; // Controller for Price per Hour
+  late TextEditingController _priceHourController;
   bool _isLoading = false;
   List<TextEditingController> _plateNumberControllers = [];
 

@@ -8,7 +8,7 @@ import 'package:fyp_psm/staff/cust_booking_page.dart';
 import 'package:fyp_psm/staff/report_page.dart';
 import 'package:fyp_psm/staff/track_page.dart';
 import 'package:fyp_psm/staff/custdetails_page.dart';
-import 'package:fyp_psm/staff/car_rental_edit.dart';  
+import 'package:fyp_psm/staff/car_rental_edit.dart';
 
 class StaffCarRentalPage extends StatefulWidget {
   @override
@@ -18,8 +18,26 @@ class StaffCarRentalPage extends StatefulWidget {
 class _StaffCarRentalPageState extends State<StaffCarRentalPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Future<void> _deleteCar(String id) async {
-    await _firestore.collection('rentalCar').doc(id).delete();
+  Future<void> _deleteCar(String carId) async {
+    WriteBatch batch = _firestore.batch();
+    CollectionReference plateNumbersRef = _firestore
+        .collection('rentalCar')
+        .doc(carId)
+        .collection('plateNumbers');
+
+    // Get all plate number documents
+    QuerySnapshot plateNumbersSnapshot = await plateNumbersRef.get();
+
+    // Delete each plate number document
+    for (QueryDocumentSnapshot doc in plateNumbersSnapshot.docs) {
+      batch.delete(doc.reference);
+    }
+
+    // Delete the car document
+    batch.delete(_firestore.collection('rentalCar').doc(carId));
+
+    // Commit the batch
+    await batch.commit();
   }
 
   @override
@@ -42,7 +60,8 @@ class _StaffCarRentalPageState extends State<StaffCarRentalPage> {
               // Navigate to the login page
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (context) => LoginPage(showRegisterPage: () {})),
+                MaterialPageRoute(
+                    builder: (context) => LoginPage(showRegisterPage: () {})),
               );
             },
             icon: Icon(
@@ -86,16 +105,16 @@ class _StaffCarRentalPageState extends State<StaffCarRentalPage> {
                       },
                     ),
                     IconButton(
-                    icon: Icon(Icons.car_crash_outlined), // Icon for setting rental period
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => CarPlateNumber(carId: car.id),
-                        ),
-                      );
-                    },
-                  ),
+                      icon: Icon(Icons.car_crash_outlined), // Icon for setting rental period
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => CarPlateNumber(carId: car.id),
+                          ),
+                        );
+                      },
+                    ),
                     IconButton(
                       icon: Icon(Icons.delete),
                       onPressed: () async {
