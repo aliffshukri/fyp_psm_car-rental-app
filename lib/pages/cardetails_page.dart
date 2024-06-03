@@ -253,6 +253,15 @@ class _CarDetailsPageState extends State<CarDetailsPage> {
                               // Fetch the random plate number
                               String plateNumber = await _fetchRandomPlateNumber();
 
+                              // Set rental period hours and days based on the selected rental type
+                              int rentalPeriodHours = rentalType == 'Hours' ? rentalPeriod : 0;
+                              int rentalPeriodDays = rentalType == 'Days' ? rentalPeriod : 0;
+
+                              // Create rental period description
+                              String rentalPeriodDescription = rentalType == 'Hours'
+                                  ? '$rentalPeriod hours'
+                                  : '$rentalPeriod days';
+
                               // Navigate to CheckoutPage with the fetched plate number
                               Navigator.push(
                                 context,
@@ -260,7 +269,9 @@ class _CarDetailsPageState extends State<CarDetailsPage> {
                                   builder: (context) => CheckoutPage(
                                     startDateTime: widget.selectedDateTime,
                                     endDateTime: calculateEndDateTime(),
-                                    rentalPeriod: '$rentalPeriod $rentalType',
+                                    rentalPeriodDescription: rentalPeriodDescription,
+                                    rentalPeriodHours: rentalType == 'Hours' ? rentalPeriod : 0,
+                                    rentalPeriodDays: rentalType == 'Days' ? rentalPeriod : 0,
                                     carBrand: widget.brand ?? '',
                                     carModel: widget.modelName ?? '',
                                     carPlate: plateNumber, // Pass the fetched plate number

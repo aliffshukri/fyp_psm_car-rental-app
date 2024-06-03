@@ -114,6 +114,7 @@ class _HomePageState extends State<HomePage> {
                                     onDateChanged: (DateTime date) {
                                       setState(() {
                                         selectedDate = date;
+                                        selectedTime = null; // Reset selected time when date changes
                                       });
                                       Navigator.pop(context);
                                     },
@@ -149,44 +150,51 @@ class _HomePageState extends State<HomePage> {
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () {
-                      showModalBottomSheet(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return Container(
-                            height: 200,
-                            child: Column(
-                              children: [
-                                SizedBox(height: 16),
-                                Text(
-                                  'Select Time',
-                                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                                ),
-                                Expanded(
-                                  child: ListView.builder(
-                                    itemCount: timeOptions.length,
-                                    itemBuilder: (BuildContext context, int index) {
-                                      return ListTile(
-                                        title: Center(
-                                          child: Text(
-                                            timeOptions[index],
-                                            style: TextStyle(fontSize: 18),
-                                          ),
-                                        ),
-                                        onTap: () {
-                                          setState(() {
-                                            selectedTime = timeOptions[index];
-                                          });
-                                          Navigator.pop(context);
-                                        },
-                                      );
-                                    },
+                      if (selectedDate != null) {
+                        showModalBottomSheet(
+                          context: context,
+                          builder: (BuildContext context) {
+                            List<String> filteredTimeOptions = _filterTimeOptions(selectedDate!);
+                            return Container(
+                              height: 200,
+                              child: Column(
+                                children: [
+                                  SizedBox(height: 16),
+                                  Text(
+                                    'Select Time',
+                                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                                   ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      );
+                                  Expanded(
+                                    child: ListView.builder(
+                                      itemCount: filteredTimeOptions.length,
+                                      itemBuilder: (BuildContext context, int index) {
+                                        return ListTile(
+                                          title: Center(
+                                            child: Text(
+                                              filteredTimeOptions[index],
+                                              style: TextStyle(fontSize: 18),
+                                            ),
+                                          ),
+                                          onTap: () {
+                                            setState(() {
+                                              selectedTime = filteredTimeOptions[index];
+                                            });
+                                            Navigator.pop(context);
+                                          },
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Please select a date first')),
+                        );
+                      }
                     },
                     child: Container(
                       height: 40,
@@ -284,6 +292,27 @@ class _HomePageState extends State<HomePage> {
         },
       ),
     );
+  }
+
+  List<String> _filterTimeOptions(DateTime selectedDate) {
+    DateTime now = DateTime.now();
+    if (selectedDate.year == now.year &&
+        selectedDate.month == now.month &&
+        selectedDate.day == now.day) {
+      return timeOptions.where((timeOption) {
+        DateTime timeOptionDateTime = DateFormat('h:mm a').parse(timeOption);
+        DateTime fullTimeOptionDateTime = DateTime(
+          selectedDate.year,
+          selectedDate.month,
+          selectedDate.day,
+          timeOptionDateTime.hour,
+          timeOptionDateTime.minute,
+        );
+        return fullTimeOptionDateTime.isAfter(now);
+      }).toList();
+    } else {
+      return timeOptions;
+    }
   }
 
   Widget _buildRentalCarItem(
