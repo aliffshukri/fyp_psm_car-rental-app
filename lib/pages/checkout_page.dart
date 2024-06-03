@@ -92,7 +92,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
         'phoneNumber': phoneNumber,
         'email': email,
         'bookingDateTime': bookingDateTime,
-        'isPast': false, // Add status field as "no"
       });
 
       // Navigate to MyBookingPage

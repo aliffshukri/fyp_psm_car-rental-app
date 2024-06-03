@@ -1,5 +1,9 @@
-import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fyp_psm/pages/login_page.dart';
 import 'package:fyp_psm/staff/car_rental_page.dart';
 import 'package:fyp_psm/staff/cust_booking_page.dart';
@@ -14,7 +18,7 @@ class TrackPage extends StatefulWidget {
 }
 
 class _TrackPageState extends State<TrackPage> {
-   @override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -48,9 +52,21 @@ class _TrackPageState extends State<TrackPage> {
         backgroundColor: Color.fromARGB(255, 173, 129, 80),
       ),
       body: Center(
-        child: Text(
-          "Track Page", // Placeholder text for the main page
-          style: TextStyle(fontSize: 20),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              "Track Page", // Placeholder text for the main page
+              style: TextStyle(fontSize: 20),
+            ),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                _showLiveTrackModal(context);
+              },
+              child: Text('Track'),
+            ),
+          ],
         ),
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -115,6 +131,102 @@ class _TrackPageState extends State<TrackPage> {
               break;
           }
         },
+      ),
+    );
+  }
+
+  void _showLiveTrackModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.9,
+          child: LiveTrackPage(),
+        );
+      },
+    );
+  }
+}
+
+class LiveTrackPage extends StatefulWidget {
+  const LiveTrackPage({super.key});
+
+  @override
+  State<LiveTrackPage> createState() => _LiveTrackPageState();
+}
+
+class _LiveTrackPageState extends State<LiveTrackPage> {
+  late Timer _timer;
+  LatLng _currentPosition = LatLng(1.851751, 103.069315); // Initial position: House 115
+  final MapController _mapController = MapController();
+
+  @override
+  void initState() {
+    super.initState();
+    _startMockTracking();
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
+
+  void _startMockTracking() {
+    Random random = Random();
+    _timer = Timer.periodic(Duration(seconds: 2), (timer) {
+      setState(() {
+        _currentPosition = LatLng(
+          _currentPosition.latitude + (random.nextDouble() - 0.5) * 0.001,
+          _currentPosition.longitude + (random.nextDouble() - 0.5) * 0.001,
+        );
+      });
+
+      _mapController.move(_currentPosition, 15.0);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        automaticallyImplyLeading: false, // Remove the back arrow
+        centerTitle: true,
+        title: Text(
+          "Live Track",
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        elevation: 0,
+        backgroundColor: Color.fromARGB(255, 173, 129, 80),
+      ),
+      body: FlutterMap(
+        mapController: _mapController,
+        options: MapOptions(
+          center: _currentPosition,
+          zoom: 15.0,
+        ),
+        children: [
+          TileLayer(
+            urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+            subdomains: ['a', 'b', 'c'],
+          ),
+          MarkerLayer(
+            markers: [
+              Marker(
+                width: 80.0,
+                height: 80.0,
+                point: _currentPosition,
+                child: Container(
+                  child: Icon(Icons.location_pin, color: Colors.red, size: 40),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
