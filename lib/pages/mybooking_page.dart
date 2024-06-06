@@ -1,4 +1,8 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fyp_psm/pages/home_page.dart';
@@ -20,7 +24,7 @@ class _MyBookingPageState extends State<MyBookingPage> {
     return Scaffold(
       backgroundColor: Color.fromARGB(255, 178, 191, 83),
       appBar: AppBar(
-        automaticallyImplyLeading: false, // Add this line to remove the back button
+        automaticallyImplyLeading: false,
         centerTitle: true,
         title: Text(
           "My Booking",
@@ -50,66 +54,94 @@ class _MyBookingPageState extends State<MyBookingPage> {
 
           final bookings = snapshot.data!.docs;
 
-          // Sort the bookings list to ensure Upcoming bookings appear above Completed ones
-          bookings.sort((a, b) {
-            DateTime endDateTimeA = a['endDateTime'].toDate();
-            DateTime endDateTimeB = b['endDateTime'].toDate();
-            bool isPastA = endDateTimeA.isBefore(DateTime.now()) || endDateTimeA.isAtSameMomentAs(DateTime.now());
-            bool isPastB = endDateTimeB.isBefore(DateTime.now()) || endDateTimeB.isAtSameMomentAs(DateTime.now());
-
-            if (isPastA && !isPastB) {
-              return 1; // A is Completed, B is Upcoming, so B comes first
-            } else if (!isPastA && isPastB) {
-              return -1; // A is Upcoming, B is Completed, so A comes first
-            } else {
-              // Both are either Upcoming or Completed, sort based on startDateTime
-              return a['startDateTime'].compareTo(b['startDateTime']);
-            }
-          });
-
           return ListView.builder(
             itemCount: bookings.length,
             itemBuilder: (context, index) {
               final booking = bookings[index];
               DateTime endDateTime = booking['endDateTime'].toDate();
-              bool isPast = endDateTime.isBefore(DateTime.now()) || endDateTime.isAtSameMomentAs(DateTime.now());
-              String status = isPast ? 'Completed' : 'Upcoming';
+              String status = booking['status'] ?? 'Upcoming'; // Fetch status from Firestore
 
-              return Card(
-                margin: EdgeInsets.all(8.0),
-                child: ListTile(
-                  title: Text(
-                    'Start Date & Time: ${DateFormat('dd-MM-yyyy hh:mm a').format(booking['startDateTime'].toDate())}',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Brand: ${booking['brand']}'),
-                      Text('Model: ${booking['carModel']}'),
-                      Text('Plate Number: ${booking['plateNumber']}'),
-                      Text(
-                        'Status: $status',
-                        style: TextStyle(
-                          color: status == 'Upcoming' ? Colors.purple : Colors.green,
-                          fontWeight: FontWeight.bold,
-                        ),
+              return FutureBuilder<QuerySnapshot>(
+                future: FirebaseFirestore.instance
+                    .collection('booking')
+                    .doc(booking.id)
+                    .collection('fuel')
+                    .get(),
+                builder: (context, fuelSnapshot) {
+                  if (fuelSnapshot.connectionState == ConnectionState.waiting) {
+                    return Center(child: CircularProgressIndicator());
+                  }
+
+                  if (fuelSnapshot.hasError) {
+                    return Center(child: Text('Error: ${fuelSnapshot.error}'));
+                  }
+
+                  if (fuelSnapshot.hasData && fuelSnapshot.data!.docs.isNotEmpty) {
+                    var fuelData = fuelSnapshot.data!.docs.first.data() as Map<String, dynamic>?;
+
+                    if (fuelData != null) {
+                      if (fuelData['isRefuel'] == false) {
+                        status = 'Completed (Pending Penalty Payment)';
+                      } else {
+                        status = 'Completed';
+                      }
+                    }
+                  }
+
+                  return Card(
+                    margin: EdgeInsets.all(8.0),
+                    child: ListTile(
+                      title: Text(
+                        'Start Date & Time: ${DateFormat('dd-MM-yyyy hh:mm a').format(booking['startDateTime'].toDate())}',
+                        style: TextStyle(fontWeight: FontWeight.bold),
                       ),
-                    ],
-                  ),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => MyBookingDetailsPage(bookingData: booking.data() as Map<String, dynamic>),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Brand: ${booking['brand']}'),
+                          Text('Model: ${booking['carModel']}'),
+                          Text('Plate Number: ${booking['plateNumber']}'),
+                          Text(
+                            'Status: $status',
+                            style: TextStyle(
+                              color: status == 'Upcoming'
+                                  ? Colors.purple
+                                  : (status == 'Completed (Pending Penalty Payment)'
+                                      ? Colors.red
+                                      : (status == 'Completed (Paid Penalty)'
+                                          ? Colors.pink
+                                          : Colors.green)),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
-                    );
-                  },
-                ),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+  builder: (context) => MyBookingDetailsPage(
+    bookingData: booking.data() as Map<String, dynamic>, // Cast booking data to Map<String, dynamic>
+    initialStatus: status,
+    bookingId: booking.id,
+    initialStatusColor: status == 'Upcoming'
+      ? Colors.purple
+      : (status == 'Completed (Pending Penalty Payment)'
+          ? Colors.red
+          : (status == 'Completed (Paid Penalty)'
+              ? Colors.pink
+              : Colors.green)),
+  ),
+),
+
+                        );
+                      },
+                    ),
+                  );
+                },
               );
             },
           );
-
         },
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -128,22 +160,19 @@ class _MyBookingPageState extends State<MyBookingPage> {
           ),
         ],
         selectedItemColor: Colors.black,
-        currentIndex: 1, // Set the current index to 1 for "My Booking" tab
+        currentIndex: 1,
         onTap: (int index) {
           // Handle bottom navigation item taps here
           switch (index) {
             case 0:
-              // Navigate to home page
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (context) => HomePage()),
               );
               break;
             case 1:
-              
               break;
             case 2:
-              // Navigate to Session page
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (context) => SessionPage()),
@@ -156,32 +185,124 @@ class _MyBookingPageState extends State<MyBookingPage> {
   }
 }
 
-
-class MyBookingDetailsPage extends StatelessWidget {
+class MyBookingDetailsPage extends StatefulWidget {
   final Map<String, dynamic> bookingData;
+  final String initialStatus;
+  final String bookingId;
+  final Color initialStatusColor;
 
-  MyBookingDetailsPage({required this.bookingData});
+  MyBookingDetailsPage({
+    required this.bookingData,
+    required this.initialStatus,
+    required this.bookingId,
+    required this.initialStatusColor, 
+  });
+
+  @override
+  _MyBookingDetailsPageState createState() => _MyBookingDetailsPageState();
+}
+
+class _MyBookingDetailsPageState extends State<MyBookingDetailsPage> {
+  File? _receiptFile;
+  bool _isUploading = false;
+  late String status;
+  late Color statusColor;
+
+  @override
+  void initState() {
+    super.initState();
+    status = widget.initialStatus;
+    statusColor = widget.initialStatusColor;
+  }
+
+  Future<void> _pickFile() async {
+    final FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.any);
+
+    if (result != null && result.files.single.path != null) {
+      setState(() {
+        _receiptFile = File(result.files.single.path!);
+      });
+    }
+  }
+
+  Future<void> _uploadReceipt() async {
+    if (_receiptFile == null) {
+      _showPopUpMessage('No File Selected', 'Please select a file to upload.');
+      return;
+    }
+
+    setState(() {
+      _isUploading = true;
+    });
+
+    try {
+      // Upload the file to Firebase Storage
+      String fileName = 'penalty_receipts/${widget.bookingId}_${DateTime.now().millisecondsSinceEpoch}.pdf';
+      Reference storageReference = FirebaseStorage.instance.ref().child(fileName);
+      UploadTask uploadTask = storageReference.putFile(_receiptFile!);
+      TaskSnapshot taskSnapshot = await uploadTask.whenComplete(() => {});
+      String downloadURL = await taskSnapshot.ref.getDownloadURL();
+
+      // Store the download URL in the Firestore penaltyProof subcollection
+      await FirebaseFirestore.instance
+          .collection('booking')
+          .doc(widget.bookingId)
+          .collection('penaltyProof')
+          .add({
+        'proof': downloadURL,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      // Update the booking status
+      await FirebaseFirestore.instance.collection('booking').doc(widget.bookingId).update({
+        'status': 'Completed (Paid Penalty)',
+      });
+
+      // Show success message and update UI
+      _showPopUpMessage('Payment Successful', 'Your penalty payment has been recorded.');
+      setState(() {
+        _receiptFile = null;
+        status = 'Completed (Paid Penalty)';
+        statusColor = Colors.green;
+      });
+    } catch (error) {
+      _showPopUpMessage('Payment Failed', 'An error occurred while processing your payment.');
+    } finally {
+      setState(() {
+        _isUploading = false;
+      });
+    }
+  }
+
+  void _showPopUpMessage(String title, String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    DateTime endDateTime = bookingData['endDateTime'].toDate();
-    String status = endDateTime.isBefore(DateTime.now()) || endDateTime.isAtSameMomentAs(DateTime.now())
-        ? 'Completed'
-        : 'Upcoming';
+    DateTime endDateTime = widget.bookingData['endDateTime'].toDate();
 
-    // Update Firestore when status changes to "Completed"
-    if (status == 'Completed' && !bookingData['isPast']) {
-      FirebaseFirestore.instance.collection('booking').doc(bookingData['bookingId']).update({
-        'isPast': true,
-      });
-    }
-
-    // Determine rental period
     String rentalPeriod;
-    if (bookingData['rentalPeriodDays'] != 0) {
-      rentalPeriod = '${bookingData['rentalPeriodDays']} days';
-    } else if (bookingData['rentalPeriodHours'] != 0) {
-      rentalPeriod = '${bookingData['rentalPeriodHours']} hours';
+    if (widget.bookingData['rentalPeriodDays'] != 0) {
+      rentalPeriod = '${widget.bookingData['rentalPeriodDays']} days';
+    } else if (widget.bookingData['rentalPeriodHours'] != 0) {
+      rentalPeriod = '${widget.bookingData['rentalPeriodHours']} hours';
     } else {
       rentalPeriod = 'N/A';
     }
@@ -204,7 +325,7 @@ class MyBookingDetailsPage extends StatelessWidget {
                 'Status: $status',
                 style: TextStyle(
                   fontSize: 18,
-                  color: status == 'Upcoming' ? Colors.purple : Colors.green,
+                  color: statusColor,
                   fontWeight: FontWeight.bold,
                 ),
                 textAlign: TextAlign.center,
@@ -216,9 +337,9 @@ class MyBookingDetailsPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildSectionTitle('Your Details'),
-                  _buildDetailRow('Name', bookingData['name']),
-                  _buildDetailRow('Phone Number', bookingData['phoneNumber']),
-                  _buildDetailRow('Email', bookingData['email']),
+                  _buildDetailRow('Name', widget.bookingData['name']),
+                  _buildDetailRow('Phone Number', widget.bookingData['phoneNumber']),
+                  _buildDetailRow('Email', widget.bookingData['email']),
                 ],
               ),
             ),
@@ -228,7 +349,7 @@ class MyBookingDetailsPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildSectionTitle('Rental Session Details'),
-                  _buildDetailRow('Start Date & Time', DateFormat('dd-MM-yyyy hh:mm a').format(bookingData['startDateTime'].toDate())),
+                  _buildDetailRow('Start Date & Time', DateFormat('dd-MM-yyyy hh:mm a').format(widget.bookingData['startDateTime'].toDate())),
                   _buildDetailRow('End Date & Time', DateFormat('dd-MM-yyyy hh:mm a').format(endDateTime)),
                   _buildDetailRow('Rental Period', rentalPeriod),
                 ],
@@ -240,9 +361,9 @@ class MyBookingDetailsPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildSectionTitle('Car Details'),
-                  _buildDetailRow('Brand', bookingData['brand']),
-                  _buildDetailRow('Model', bookingData['carModel']),
-                  _buildDetailRow('Plate Number', bookingData['plateNumber']),
+                  _buildDetailRow('Brand', widget.bookingData['brand']),
+                  _buildDetailRow('Model', widget.bookingData['carModel']),
+                  _buildDetailRow('Plate Number', widget.bookingData['plateNumber']),
                 ],
               ),
             ),
@@ -252,11 +373,48 @@ class MyBookingDetailsPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildSectionTitle('Booking Details'),
-                  _buildDetailRow('Booking Made', DateFormat('dd-MM-yyyy hh:mm a').format(bookingData['bookingDateTime'].toDate())),
-                  _buildDetailRow('Total Price', '\RM ${bookingData['totalPrice'].toStringAsFixed(2)}'),
+                  _buildDetailRow('Booking Made', DateFormat('dd-MM-yyyy hh:mm a').format(widget.bookingData['bookingDateTime'].toDate())),
+                  _buildDetailRow('Total Price', '\RM ${widget.bookingData['totalPrice'].toStringAsFixed(2)}'),
                 ],
               ),
             ),
+            if (status == 'Completed (Pending Penalty Payment)') ...[
+              SizedBox(height: 20),
+              _buildSection(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionTitle('Penalty Details'),
+                    _buildDetailRow('Price Fee:', 'RM 10'),
+                    _buildDetailRow('Bank Account:', '123-456-789'),
+                    const SizedBox(height: 10),
+                    Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Image.asset(
+                            'image/qr.jpg',
+                            height: 200,
+                          ),
+                          SizedBox(height: 10),
+                        ],
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: _pickFile,
+                      child: Text('Upload Payment Receipt'),
+                    ),
+                    if (_receiptFile != null) Text('Selected file: ${_receiptFile!.path.split('/').last}'),
+                    SizedBox(height: 10),
+                    if (_isUploading) CircularProgressIndicator(),
+                    ElevatedButton(
+                      onPressed: _uploadReceipt,
+                      child: Text('Make Payment'),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -309,3 +467,5 @@ class MyBookingDetailsPage extends StatelessWidget {
     );
   }
 }
+
+

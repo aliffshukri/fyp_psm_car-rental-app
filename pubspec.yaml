@@ -39,6 +39,11 @@ dependencies:
   url_launcher: ^6.2.6
   flutter_map: ^6.1.0
   latlong2: ^0.9.1
+  shared_preferences: ^2.2.3
+  syncfusion_flutter_charts: ^25.2.7
+  syncfusion_flutter_pdf: ^25.2.7
+  path_provider: ^2.1.3
+
 
 
   # The following adds the Cupertino Icons font to your application.
@@ -79,6 +84,7 @@ flutter:
     - image/KSJ logo.jpg
     - image/dashboard meter.jpg
     - image/qr.jpg
+    - image/qrpay.jpg
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware

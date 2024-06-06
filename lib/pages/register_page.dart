@@ -19,6 +19,7 @@ class _RegisterPageState extends State<RegisterPage> {
   final _phoneNumberController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _ageController = TextEditingController();
   bool _termsChecked = false;
   String? _drivingLicenseFilePath;
   String? _malaysianIdFilePath;
@@ -31,6 +32,7 @@ class _RegisterPageState extends State<RegisterPage> {
     _phoneNumberController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _ageController.dispose();
     super.dispose();
   }
 
@@ -73,10 +75,18 @@ class _RegisterPageState extends State<RegisterPage> {
             ),
             SizedBox(height: 16.0),
 
+            // Age
+            TextFormField(
+              controller: _ageController,
+              decoration: InputDecoration(labelText: 'Age'),
+              keyboardType: TextInputType.number,
+            ),
+            SizedBox(height: 16.0),
+
             // Email
             TextFormField(
               controller: _emailController,
-              decoration: InputDecoration(labelText: 'Email'),
+              decoration: InputDecoration(labelText: 'Email (Used for login)'),
             ),
             SizedBox(height: 16.0),
 
@@ -181,16 +191,18 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   bool _isSubmitButtonEnabled() {
-    return _termsChecked &&
-        _nameController.text.isNotEmpty &&
-        _icNumberController.text.isNotEmpty &&
-        _addressController.text.isNotEmpty &&
-        _phoneNumberController.text.isNotEmpty &&
-        _emailController.text.isNotEmpty &&
-        _passwordController.text.isNotEmpty &&
-        _drivingLicenseFilePath != null &&
-        _malaysianIdFilePath != null;
-  }
+
+  return _termsChecked &&
+      _nameController.text.isNotEmpty &&
+      _icNumberController.text.isNotEmpty &&
+      _addressController.text.isNotEmpty &&
+      _phoneNumberController.text.isNotEmpty &&
+      _emailController.text.isNotEmpty &&
+      _passwordController.text.isNotEmpty &&
+      _drivingLicenseFilePath != null &&
+      _malaysianIdFilePath != null; 
+}
+
 
   void _showPopUpMessage(String title, String message) {
     showDialog(
@@ -227,21 +239,26 @@ class _RegisterPageState extends State<RegisterPage> {
     }
   }
   
-  Future<void> _uploadFileToStorage(String userId, String filePath, String fileName) async {
-    try {
-      Reference storageReference = FirebaseStorage.instance.ref().child('files/$userId/$fileName');
-      await storageReference.putFile(File(filePath));
-      // You can also get the download URL for the file if needed
-      String downloadURL = await storageReference.getDownloadURL();
-      print('File uploaded. Download URL: $downloadURL');
-    } catch (e) {
-      print('File upload failed: $e');
-      // Handle file upload failure if needed
-      throw e; // Rethrow the exception to propagate it up the call stack
-    }
+  Future<String> _uploadFileToStorage(String userId, String filePath, String fileName) async {
+  try {
+    Reference storageReference = FirebaseStorage.instance.ref().child('files/$userId/$fileName');
+    await storageReference.putFile(File(filePath));
+    String downloadURL = await storageReference.getDownloadURL();
+    return downloadURL; // Return the download URL
+  } catch (e) {
+    throw e; // Rethrow the exception to propagate it up the call stack
   }
+}
+
+
 
   Future<void> _submitForm() async {
+  int? age = int.tryParse(_ageController.text);
+  if (age == null || age < 18) {
+    _showPopUpMessage('Invalid Age', 'You must be at least 18 years old to register.');
+    return;
+  }
+
   try {
     // Step 1: Create a user in Firebase Authentication
     UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
@@ -252,19 +269,22 @@ class _RegisterPageState extends State<RegisterPage> {
     // Step 2: Get the UID of the newly created user
     String uid = userCredential.user!.uid;
 
-    // Step 3: Save user details to Firestore
+    // Step 3: Upload files to Firebase Storage and get their URLs
+    String drivingLicenseURL = await _uploadFileToStorage(uid, _drivingLicenseFilePath!, 'driving_license.pdf');
+    String malaysianIdURL = await _uploadFileToStorage(uid, _malaysianIdFilePath!, 'malaysian_id.pdf');
+
+    // Step 4: Save user details to Firestore
     await FirebaseFirestore.instance.collection('customer').doc(uid).set({
       'name': _nameController.text,
       'icNumber': _icNumberController.text,
       'address': _addressController.text,
       'phoneNumber': _phoneNumberController.text,
       'email': _emailController.text,
+      'age': age,  // Save age
+      'drivingLicenseURL': drivingLicenseURL,  // Save driving license URL
+      'malaysianIdURL': malaysianIdURL,  // Save Malaysian ID URL
       // Add more fields as needed
     });
-
-    // Step 4: Upload files to Firebase Storage
-    await _uploadFileToStorage(uid, _drivingLicenseFilePath!, 'driving_license.pdf');
-    await _uploadFileToStorage(uid, _malaysianIdFilePath!, 'malaysian_id.pdf');
 
     // Step 5: Show success pop-up message
     _showPopUpMessage('Submission Successful', 'Your registration was successful!');
@@ -273,7 +293,7 @@ class _RegisterPageState extends State<RegisterPage> {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => LoginPage(showRegisterPage: () {  },)),
-        );
+    );
   } catch (e) {
     print("Registration failed: $e");
     // Step 7: Show failure pop-up message

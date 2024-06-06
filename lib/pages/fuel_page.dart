@@ -3,11 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fyp_psm/pages/home_page.dart';
 import 'package:fyp_psm/pages/session_page.dart';
 
 class FuelPage extends StatefulWidget {
-  const FuelPage({Key? key}) : super(key: key);
+  final String bookingId;
+
+  const FuelPage({Key? key, required this.bookingId}) : super(key: key);
 
   @override
   State<FuelPage> createState() => _FuelPageState();
@@ -16,9 +19,10 @@ class FuelPage extends StatefulWidget {
 class _FuelPageState extends State<FuelPage> {
   TextEditingController _mileageController = TextEditingController();
   TextEditingController _fuelBarController = TextEditingController();
-
+  bool _isRefueled = false;
   File? _image;
   final ImagePicker _picker = ImagePicker();
+  final user = FirebaseAuth.instance.currentUser!;
 
   Future<void> _selectImage() async {
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
@@ -28,7 +32,6 @@ class _FuelPageState extends State<FuelPage> {
     });
   }
 
-  // Add this method to reset the image state when the "Cancel" button is pressed
   void _cancelImageSelection() {
     setState(() {
       _image = null;
@@ -82,7 +85,6 @@ class _FuelPageState extends State<FuelPage> {
       Reference storageReference =
           FirebaseStorage.instance.ref().child(fileName);
       await storageReference.putFile(file);
-      // Get the download URL of the uploaded file
       return await storageReference.getDownloadURL();
     } catch (error) {
       throw error;
@@ -91,11 +93,12 @@ class _FuelPageState extends State<FuelPage> {
 
   Future<void> _storeDataInFirestore(String imageUrl) async {
     try {
-      // Store other details in Firestore (excluding image URL)
-      await FirebaseFirestore.instance.collection('fuel').add({
-        'mileageNum': _mileageController.text,
-        'fuelBar': _fuelBarController.text,
-        // Add other fields as needed
+      // Store other details in Firestore (including image URL)
+      await FirebaseFirestore.instance.collection('booking').doc(widget.bookingId).collection('fuel').add({
+        'mileageNum': int.parse(_mileageController.text),
+        'fuelBar': int.parse(_fuelBarController.text),
+        'isRefuel': _isRefueled,
+        'dashboardCar': imageUrl,
       });
     } catch (error) {
       throw error;
@@ -112,9 +115,7 @@ class _FuelPageState extends State<FuelPage> {
           actions: [
             TextButton(
               onPressed: () {
-                // Close the pop-up dialog
                 Navigator.of(context).pop();
-                // Execute the callback (navigate to HomePage)
                 onOkPressed();
               },
               child: Text('OK'),
@@ -126,17 +127,13 @@ class _FuelPageState extends State<FuelPage> {
   }
 
   void navigateToHomePage() {
-    // Navigate to HomePage
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) {
-        return HomePage();
-      }),
+      MaterialPageRoute(builder: (context) => HomePage()),
     );
   }
 
   void navigateToSessionPage() {
-    // Navigate to HomePage
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => SessionPage()),
@@ -148,6 +145,7 @@ class _FuelPageState extends State<FuelPage> {
     return Scaffold(
       backgroundColor: Color.fromARGB(255, 178, 191, 83),
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         centerTitle: true,
         title: Text(
           "Fuel Status Form",
@@ -166,48 +164,35 @@ class _FuelPageState extends State<FuelPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Text Instruction
               SizedBox(height: 20),
               Text(
                 "Please fill in the fuel details:",
                 style: TextStyle(fontSize: 20),
               ),
               SizedBox(height: 20),
-
-              // Number of Mileage
               buildTextField("Number of Mileage", _mileageController),
               SizedBox(height: 20),
-
-              // Fuel Bar
               buildTextField("Fuel Bar", _fuelBarController),
+              SizedBox(height: 20),
+              buildRadioButtons(),
               SizedBox(height: 40),
-
-              //Example Dashboard Meter
               Text(
                 "Example of Dashboard Meter that should be uploaded:",
                 style: TextStyle(fontSize: 17),
               ),
               SizedBox(height: 20),
-
-              //Dashboard Meter Example
               Image.asset(
                 'image/dashboard meter.jpg',
                 height: 200,
               ),
               SizedBox(height: 20),
-
-              // Image Upload
               buildAttachmentButton(
                 "Upload The Dashboard Meter",
                 _selectImage,
               ),
               SizedBox(height: 40),
-
-              // Submit Button
               buildButton("Submit", _uploadImageAndSubmit),
               SizedBox(height: 10),
-
-              // Return Button
               buildButton("Return", navigateToSessionPage),
               SizedBox(height: 25),
             ],
@@ -232,8 +217,49 @@ class _FuelPageState extends State<FuelPage> {
             border: InputBorder.none,
             hintText: label,
           ),
+          keyboardType: TextInputType.number,
         ),
       ),
+    );
+  }
+
+  Widget buildRadioButtons() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Did you refuel the car?",
+          style: TextStyle(fontSize: 17),
+        ),
+        Row(
+          children: [
+            Expanded(
+              child: RadioListTile<bool>(
+                title: Text("Yes"),
+                value: true,
+                groupValue: _isRefueled,
+                onChanged: (value) {
+                  setState(() {
+                    _isRefueled = value!;
+                  });
+                },
+              ),
+            ),
+            Expanded(
+              child: RadioListTile<bool>(
+                title: Text("No"),
+                value: false,
+                groupValue: _isRefueled,
+                onChanged: (value) {
+                  setState(() {
+                    _isRefueled = value!;
+                  });
+                },
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
