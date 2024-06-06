@@ -31,6 +31,7 @@ class _SessionPageState extends State<SessionPage> {
     var snapshot = await FirebaseFirestore.instance
         .collection('booking')
         .where('email', isEqualTo: user.email)
+        .where('status', isEqualTo: 'Upcoming')
         .orderBy('startDateTime')
         .limit(1)
         .get();
@@ -44,6 +45,7 @@ class _SessionPageState extends State<SessionPage> {
       });
     } else {
       setState(() {
+        nearestBookingStart = null;
         isPageLocked = true; // No upcoming bookings
       });
     }
@@ -81,7 +83,7 @@ class _SessionPageState extends State<SessionPage> {
                     "COUNTDOWN",
                     style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
-                  CountdownTimer(nearestBookingStart: nearestBookingStart!),
+                  CountdownTimer(nearestBookingStart: nearestBookingStart!, onCountdownComplete: fetchNearestUpcomingBooking),
                   SizedBox(height: 20),
                   ElevatedButton(
                     onPressed: isPageLocked ? showSkipConfirmation : null,
@@ -178,12 +180,11 @@ class _SessionPageState extends State<SessionPage> {
   }
 
   void navigateToFuelPage() {
-  Navigator.pushReplacement(
-    context,
-    MaterialPageRoute(builder: (context) => FuelPage(bookingId: bookingId)), // Pass the bookingId
-  );
-}
-
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => FuelPage(bookingId: bookingId)), // Pass the bookingId
+    );
+  }
 
   void navigateToPage(Widget page) {
     Navigator.pushReplacement(
@@ -269,12 +270,11 @@ class _SessionPageState extends State<SessionPage> {
   }
 }
 
-
-
 class CountdownTimer extends StatefulWidget {
   final DateTime nearestBookingStart;
+  final VoidCallback onCountdownComplete;
 
-  CountdownTimer({required this.nearestBookingStart});
+  CountdownTimer({required this.nearestBookingStart, required this.onCountdownComplete});
 
   @override
   _CountdownTimerState createState() => _CountdownTimerState();
@@ -297,7 +297,9 @@ class _CountdownTimerState extends State<CountdownTimer> {
         if (_timeRemaining.inSeconds > 0) {
           _timeRemaining -= Duration(seconds: 1);
         } else {
+          _timeRemaining = Duration.zero;
           timer.cancel();
+          widget.onCountdownComplete(); // Call the callback when countdown completes
         }
       });
     });

@@ -79,13 +79,29 @@ class _MyBookingPageState extends State<MyBookingPage> {
                   if (fuelSnapshot.hasData && fuelSnapshot.data!.docs.isNotEmpty) {
                     var fuelData = fuelSnapshot.data!.docs.first.data() as Map<String, dynamic>?;
 
-                    if (fuelData != null) {
-                      if (fuelData['isRefuel'] == false) {
-                        status = 'Completed (Pending Penalty Payment)';
-                      } else {
-                        status = 'Completed';
+                   if (fuelData != null) {
+                    if (fuelData['isRefuel'] == false) {
+                      status = 'Completed (Pending Penalty Payment)';
+                      if (booking['status'] == 'Upcoming'){
+                        FirebaseFirestore.instance
+                          .collection('booking')
+                          .doc(booking.id)
+                          .update({'status': 'Completed (Pending Penalty Payment)'});
+                      }
+                    } else {
+                      status = 'Completed';
+                      if (booking['status'] == 'Upcoming') {
+                        FirebaseFirestore.instance
+                          .collection('booking')
+                          .doc(booking.id)
+                          .update({'status': 'Completed'});
                       }
                     }
+                  }
+                    // Check if the status is Completed (Paid Penalty)
+                      if (booking['status'] == 'Completed (Paid Penalty)') {
+                        status = 'Completed (Paid Penalty)';
+                  }
                   }
 
                   return Card(
@@ -109,32 +125,34 @@ class _MyBookingPageState extends State<MyBookingPage> {
                                   : (status == 'Completed (Pending Penalty Payment)'
                                       ? Colors.red
                                       : (status == 'Completed (Paid Penalty)'
-                                          ? Colors.pink
+                                          ? Colors.green
                                           : Colors.green)),
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                         ],
                       ),
-                      onTap: () {
-                        Navigator.push(
+                      onTap: () async {
+                        final result = await Navigator.push(
                           context,
                           MaterialPageRoute(
-  builder: (context) => MyBookingDetailsPage(
-    bookingData: booking.data() as Map<String, dynamic>, // Cast booking data to Map<String, dynamic>
-    initialStatus: status,
-    bookingId: booking.id,
-    initialStatusColor: status == 'Upcoming'
-      ? Colors.purple
-      : (status == 'Completed (Pending Penalty Payment)'
-          ? Colors.red
-          : (status == 'Completed (Paid Penalty)'
-              ? Colors.pink
-              : Colors.green)),
-  ),
-),
-
+                            builder: (context) => MyBookingDetailsPage(
+                              bookingData: booking.data() as Map<String, dynamic>, // Cast booking data to Map<String, dynamic>
+                              initialStatus: status,
+                              bookingId: booking.id,
+                              initialStatusColor: status == 'Upcoming'
+                                  ? Colors.purple
+                                  : (status == 'Completed (Pending Penalty Payment)'
+                                      ? Colors.red
+                                      : (status == 'Completed (Paid Penalty)'
+                                          ? Colors.green
+                                          : Colors.green)),
+                            ),
+                          ),
                         );
+                        if (result == true) {
+                          setState(() {}); // Trigger re-fetch from Firestore
+                        }
                       },
                     ),
                   );
@@ -185,6 +203,7 @@ class _MyBookingPageState extends State<MyBookingPage> {
   }
 }
 
+
 class MyBookingDetailsPage extends StatefulWidget {
   final Map<String, dynamic> bookingData;
   final String initialStatus;
@@ -195,7 +214,7 @@ class MyBookingDetailsPage extends StatefulWidget {
     required this.bookingData,
     required this.initialStatus,
     required this.bookingId,
-    required this.initialStatusColor, 
+    required this.initialStatusColor,
   });
 
   @override
@@ -265,8 +284,10 @@ class _MyBookingDetailsPageState extends State<MyBookingDetailsPage> {
         status = 'Completed (Paid Penalty)';
         statusColor = Colors.green;
       });
+
+      Navigator.pop(context, true); // Pass true to indicate the status was updated
     } catch (error) {
-      _showPopUpMessage('Payment Failed', 'An error occurred while processing your payment.');
+      _showPopUpMessage('Payment Failed', 'An error occurred while processing your payment. Please try again.');
     } finally {
       setState(() {
         _isUploading = false;
@@ -415,6 +436,18 @@ class _MyBookingDetailsPageState extends State<MyBookingDetailsPage> {
                 ),
               ),
             ],
+            if (status == 'Completed (Paid Penalty)') ...[
+              SizedBox(height: 20),
+              _buildSection(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionTitle('Payment Details'),
+                    _buildDetailRow('Price Fee Paid:', 'RM 10'),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -467,5 +500,4 @@ class _MyBookingDetailsPageState extends State<MyBookingDetailsPage> {
     );
   }
 }
-
 
