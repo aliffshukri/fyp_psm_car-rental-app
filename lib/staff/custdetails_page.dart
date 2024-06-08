@@ -118,53 +118,59 @@ class _CustDetailsPageState extends State<CustDetailsPage> {
 Widget build(BuildContext context) {
   return Scaffold(
     appBar: AppBar(
-      automaticallyImplyLeading: false,
-      centerTitle: true,
-      title: Text(
-        "Rental Car Management",
-        style: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      actions: [
-        IconButton(
-          icon: StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('customer')
-                .where('isVerified', isEqualTo: false)
-                .snapshots(),
-            builder: (context, snapshot) {
-              int waitingCount = 0;
-              if (snapshot.hasData) {
-                waitingCount = snapshot.data!.docs.length;
-              }
-              return Stack(
-                children: [
-                  Icon(Icons.inbox, size: 40.0),
-                  if (waitingCount > 0)
-                    Positioned(
-                      right: 0,
-                      child: CircleAvatar(
-                        radius: 10,
-                        backgroundColor: Colors.red,
-                        child: Text(
-                          '$waitingCount',
-                          style: TextStyle(fontSize: 12, color: Colors.white),
-                        ),
+    automaticallyImplyLeading: false,
+    centerTitle: true,
+    actions: [
+      IconButton(
+        icon: StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('customer')
+              .where('isVerified', isEqualTo: false)
+              .snapshots(),
+          builder: (context, snapshot) {
+            int waitingCount = 0;
+            if (snapshot.hasData) {
+              waitingCount = snapshot.data!.docs.length;
+            }
+            return Stack(
+              children: [
+                Icon(Icons.inbox, size: 40.0),
+                if (waitingCount > 0)
+                  Positioned(
+                    right: 0,
+                    child: CircleAvatar(
+                      radius: 10,
+                      backgroundColor: Colors.red,
+                      child: Text(
+                        '$waitingCount',
+                        style: TextStyle(fontSize: 12, color: Colors.white),
                       ),
                     ),
-                ],
-              );
-            },
-          ),
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => VerifyCustomerAccountsPage()),
+                  ),
+              ],
             );
           },
         ),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => VerifyCustomerAccountsPage()),
+          );
+        },
+      ),
+      SizedBox(width: 8), // Add some space between the icon and the title
+      Expanded(
+        child: Center(
+          child: Text(
+            "Rental Car Management",
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ),
+
         IconButton(
           onPressed: () async {
             await FirebaseAuth.instance.signOut();

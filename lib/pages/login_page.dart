@@ -5,6 +5,7 @@ import 'package:fyp_psm/pages/home_page.dart';
 import 'package:fyp_psm/pages/register_page.dart';
 import 'package:fyp_psm/pages/status_page.dart';
 import 'package:fyp_psm/staff/car_rental_page.dart';
+import 'package:fyp_psm/staff/custdetails_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class LoginPage extends StatefulWidget {
@@ -142,7 +143,7 @@ class _LoginPageState extends State<LoginPage> {
         // Navigate to StaffCarRentalPage after successful admin login
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => StaffCarRentalPage()),
+          MaterialPageRoute(builder: (context) => CustDetailsPage()),
         );
         return; // Exit the function after navigation
       } else {
