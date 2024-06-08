@@ -208,6 +208,7 @@ class _CarPlateNumberState extends State<CarPlateNumber> {
           ],
         ),
       ),
+      backgroundColor: Color.fromARGB(255, 255, 217, 195),
     );
   }
 }

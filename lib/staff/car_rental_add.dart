@@ -192,6 +192,7 @@ class _CarRentalAddState extends State<CarRentalAdd> {
                 ),
               ),
             ),
+            backgroundColor: Color.fromARGB(255, 255, 217, 195),
     );
   }
 

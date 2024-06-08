@@ -23,6 +23,54 @@ class CustomerBookingPage extends StatefulWidget {
 class _CustomerBookingPageState extends State<CustomerBookingPage> {
   String _selectedFilter = 'Nearest Booking';
 
+  void _showFilterOptions() {
+  showModalBottomSheet(
+    context: context,
+    builder: (context) {
+      return Container(
+        height: 300, // Set the height of the ListView here
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                'Filter',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+            Expanded(
+              child: Scrollbar(
+                thumbVisibility: true, // This makes the scrollbar always visible
+                child: ListView(
+                  children: <String>[
+                    'Nearest Booking',
+                    'Oldest Booking',
+                    'Status Upcoming',
+                    'Status Completed',
+                    'Status Completed (Pending Penalty Payment)',
+                    'Status Completed (Paid Penalty)',
+                  ].map((String value) {
+                    return ListTile(
+                      title: Text(value),
+                      onTap: () {
+                        setState(() {
+                          _selectedFilter = value;
+                        });
+                        Navigator.pop(context);
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -59,25 +107,9 @@ class _CustomerBookingPageState extends State<CustomerBookingPage> {
         children: [
           Padding(
             padding: const EdgeInsets.all(8.0),
-            child: DropdownButton<String>(
-              value: _selectedFilter,
-              onChanged: (String? newValue) {
-                setState(() {
-                  _selectedFilter = newValue!;
-                });
-              },
-              items: <String>[
-                'Nearest Booking',
-                'Oldest Booking',
-                'Status Upcoming',
-                'Status Completed',
-                'Status Completed (Paid Penalty)',
-              ].map<DropdownMenuItem<String>>((String value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(value),
-                );
-              }).toList(),
+            child: ElevatedButton(
+              onPressed: _showFilterOptions,
+              child: Text('Filter: $_selectedFilter'),
             ),
           ),
           Expanded(
@@ -270,6 +302,7 @@ class _CustomerBookingPageState extends State<CustomerBookingPage> {
           }
         },
       ),
+      backgroundColor: Color.fromARGB(255, 255, 217, 195),
     );
   }
 
@@ -287,6 +320,9 @@ class _CustomerBookingPageState extends State<CustomerBookingPage> {
         break;
       case 'Status Completed':
         stream = FirebaseFirestore.instance.collection('booking').where('status', isEqualTo: 'Completed').snapshots();
+        break;
+      case 'Status Completed (Pending Penalty Payment)':
+        stream = FirebaseFirestore.instance.collection('booking').where('status', isEqualTo: 'Completed (Pending Penalty Payment)').snapshots();
         break;
       case 'Status Completed (Paid Penalty)':
         stream = FirebaseFirestore.instance.collection('booking').where('status', isEqualTo: 'Completed (Paid Penalty)').snapshots();

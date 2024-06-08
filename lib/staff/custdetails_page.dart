@@ -308,6 +308,7 @@ Widget build(BuildContext context) {
         }
       },
     ),
+    backgroundColor: Color.fromARGB(255, 255, 217, 195),
   );
 }
 
@@ -581,6 +582,7 @@ class VerifyCustomerAccountsPage extends StatelessWidget {
           );
         },
       ),
+      backgroundColor: Color.fromARGB(255, 255, 217, 195),
     );
   }
 }

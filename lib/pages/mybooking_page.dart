@@ -18,6 +18,108 @@ class MyBookingPage extends StatefulWidget {
 
 class _MyBookingPageState extends State<MyBookingPage> {
   final user = FirebaseAuth.instance.currentUser!;
+  String _selectedFilter = 'Nearest Booking';
+
+  void _showFilterOptions() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Container(
+          height: 300, // Set the height of the ListView here
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  'Filter',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+              Expanded(
+                child: Scrollbar(
+                  thumbVisibility: true, // This makes the scrollbar always visible
+                  child: ListView(
+                    children: <String>[
+                      'Nearest Booking',
+                      'Oldest Booking',
+                      'Status Upcoming',
+                      'Status Completed',
+                      'Status Completed (Pending Penalty Payment)',
+                      'Status Completed (Paid Penalty)',
+                    ].map((String value) {
+                      return ListTile(
+                        title: Text(value),
+                        onTap: () {
+                          setState(() {
+                            _selectedFilter = value;
+                          });
+                          Navigator.pop(context);
+                        },
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Stream<QuerySnapshot> _getFilteredStream() {
+    Stream<QuerySnapshot> stream;
+    switch (_selectedFilter) {
+      case 'Nearest Booking':
+        stream = FirebaseFirestore.instance
+            .collection('booking')
+            .where('email', isEqualTo: user.email)
+            .orderBy('startDateTime', descending: false)
+            .snapshots();
+        break;
+      case 'Oldest Booking':
+        stream = FirebaseFirestore.instance
+            .collection('booking')
+            .where('email', isEqualTo: user.email)
+            .orderBy('startDateTime', descending: true)
+            .snapshots();
+        break;
+      case 'Status Upcoming':
+        stream = FirebaseFirestore.instance
+            .collection('booking')
+            .where('email', isEqualTo: user.email)
+            .where('status', isEqualTo: 'Upcoming')
+            .snapshots();
+        break;
+      case 'Status Completed':
+        stream = FirebaseFirestore.instance
+            .collection('booking')
+            .where('email', isEqualTo: user.email)
+            .where('status', isEqualTo: 'Completed')
+            .snapshots();
+        break;
+      case 'Status Completed (Pending Penalty Payment)':
+        stream = FirebaseFirestore.instance
+            .collection('booking')
+            .where('email', isEqualTo: user.email)
+            .where('status', isEqualTo: 'Completed (Pending Penalty Payment)')
+            .snapshots();
+        break;
+      case 'Status Completed (Paid Penalty)':
+        stream = FirebaseFirestore.instance
+            .collection('booking')
+            .where('email', isEqualTo: user.email)
+            .where('status', isEqualTo: 'Completed (Paid Penalty)')
+            .snapshots();
+        break;
+      default:
+        stream = FirebaseFirestore.instance
+            .collection('booking')
+            .where('email', isEqualTo: user.email)
+            .snapshots();
+    }
+    return stream;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,138 +139,147 @@ class _MyBookingPageState extends State<MyBookingPage> {
         elevation: 0,
         backgroundColor: Color.fromARGB(255, 173, 129, 80),
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('booking')
-            .where('email', isEqualTo: user.email)
-            .orderBy('startDateTime', descending: false)
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: ElevatedButton(
+              onPressed: _showFilterOptions,
+              child: Text('Filter: $_selectedFilter'),
+            ),
+          ),
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: _getFilteredStream(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
 
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          }
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(child: CircularProgressIndicator());
+                }
 
-          final bookings = snapshot.data!.docs;
+                final bookings = snapshot.data!.docs;
 
-          return ListView.builder(
-            itemCount: bookings.length,
-            itemBuilder: (context, index) {
-              final booking = bookings[index];
-              DateTime endDateTime = booking['endDateTime'].toDate();
-              String status = booking['status'] ?? 'Upcoming'; // Fetch status from Firestore
+                return ListView.builder(
+                  itemCount: bookings.length,
+                  itemBuilder: (context, index) {
+                    final booking = bookings[index];
+                    DateTime endDateTime = booking['endDateTime'].toDate();
+                    String status = booking['status'] ?? 'Upcoming';
 
-              return FutureBuilder<QuerySnapshot>(
-                future: FirebaseFirestore.instance
-                    .collection('booking')
-                    .doc(booking.id)
-                    .collection('fuel')
-                    .get(),
-                builder: (context, fuelSnapshot) {
-                  if (fuelSnapshot.connectionState == ConnectionState.waiting) {
-                    return Center(child: CircularProgressIndicator());
-                  }
-
-                  if (fuelSnapshot.hasError) {
-                    return Center(child: Text('Error: ${fuelSnapshot.error}'));
-                  }
-
-                  if (fuelSnapshot.hasData && fuelSnapshot.data!.docs.isNotEmpty) {
-                    var fuelData = fuelSnapshot.data!.docs.first.data() as Map<String, dynamic>?;
-
-                   if (fuelData != null) {
-                    if (fuelData['isRefuel'] == false) {
-                      status = 'Completed (Pending Penalty Payment)';
-                      if (booking['status'] == 'Upcoming'){
-                        FirebaseFirestore.instance
+                    return FutureBuilder<QuerySnapshot>(
+                      future: FirebaseFirestore.instance
                           .collection('booking')
                           .doc(booking.id)
-                          .update({'status': 'Completed (Pending Penalty Payment)'});
-                      }
-                    } else {
-                      status = 'Completed';
-                      if (booking['status'] == 'Upcoming') {
-                        FirebaseFirestore.instance
-                          .collection('booking')
-                          .doc(booking.id)
-                          .update({'status': 'Completed'});
-                      }
-                    }
-                  }
-                    // Check if the status is Completed (Paid Penalty)
-                        if (booking['status'] == 'Ongoing') {
-                          status = 'Ongoing';
-                  }
-                    // Check if the status is Completed (Paid Penalty)
-                      if (booking['status'] == 'Completed (Paid Penalty)') {
-                        status = 'Completed (Paid Penalty)';
-                  }
-                  }
+                          .collection('fuel')
+                          .get(),
+                      builder: (context, fuelSnapshot) {
+                        if (fuelSnapshot.connectionState == ConnectionState.waiting) {
+                          return Center(child: CircularProgressIndicator());
+                        }
 
-                  return Card(
-                    margin: EdgeInsets.all(8.0),
-                    child: ListTile(
-                      title: Text(
-                        'Start Date & Time: ${DateFormat('dd-MM-yyyy hh:mm a').format(booking['startDateTime'].toDate())}',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Brand: ${booking['brand']}'),
-                          Text('Model: ${booking['carModel']}'),
-                          Text('Plate Number: ${booking['plateNumber']}'),
-                          Text(
-                            'Status: $status',
-                            style: TextStyle(
-                              color: status == 'Upcoming'
-                                  ? Colors.purple
-                                  :(status == 'Ongoing' 
-                                  ? Colors.blue
-                                    : (status == 'Completed (Pending Penalty Payment)'
-                                        ? Colors.red
-                                        : (status == 'Completed (Paid Penalty)'
-                                            ? Colors.green
-                                            : Colors.green))),
-                              fontWeight: FontWeight.bold,
+                        if (fuelSnapshot.hasError) {
+                          return Center(child: Text('Error: ${fuelSnapshot.error}'));
+                        }
+
+                        if (fuelSnapshot.hasData && fuelSnapshot.data!.docs.isNotEmpty) {
+                          var fuelData = fuelSnapshot.data!.docs.first.data() as Map<String, dynamic>?;
+
+                          if (fuelData != null) {
+                            if (fuelData['isRefuel'] == false) {
+                              status = 'Completed (Pending Penalty Payment)';
+                              if (booking['status'] == 'Upcoming') {
+                                FirebaseFirestore.instance
+                                    .collection('booking')
+                                    .doc(booking.id)
+                                    .update({'status': 'Completed (Pending Penalty Payment)'});
+                              }
+                            } else {
+                              status = 'Completed';
+                              if (booking['status'] == 'Upcoming') {
+                                FirebaseFirestore.instance
+                                    .collection('booking')
+                                    .doc(booking.id)
+                                    .update({'status': 'Completed'});
+                              }
+                            }
+                          }
+
+                          if (booking['status'] == 'Ongoing') {
+                            status = 'Ongoing';
+                          }
+
+                          if (booking['status'] == 'Completed (Paid Penalty)') {
+                            status = 'Completed (Paid Penalty)';
+                          }
+                        }
+
+                        return Card(
+                          margin: EdgeInsets.all(8.0),
+                          child: ListTile(
+                            title: Text(
+                              'Start Date & Time: ${DateFormat('dd-MM-yyyy hh:mm a').format(booking['startDateTime'].toDate())}',
+                              style: TextStyle(fontWeight: FontWeight.bold),
                             ),
-                          ),
-                        ],
-                      ),
-                      onTap: () async {
-                        final result = await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => MyBookingDetailsPage(
-                              bookingData: booking.data() as Map<String, dynamic>, // Cast booking data to Map<String, dynamic>
-                              initialStatus: status,
-                              bookingId: booking.id,
-                              initialStatusColor: status == 'Upcoming'
-                                  ? Colors.purple
-                                  :(status == 'Ongoing' 
-                                  ? Colors.blue
-                                    : (status == 'Completed (Pending Penalty Payment)'
-                                        ? Colors.red
-                                        : (status == 'Completed (Paid Penalty)'
-                                            ? Colors.green
-                                            : Colors.green))),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Brand: ${booking['brand']}'),
+                                Text('Model: ${booking['carModel']}'),
+                                Text('Plate Number: ${booking['plateNumber']}'),
+                                Text(
+                                  'Status: $status',
+                                  style: TextStyle(
+                                    color: status == 'Upcoming'
+                                        ? Colors.purple
+                                        : (status == 'Ongoing'
+                                            ? Colors.blue
+                                            : (status == 'Completed (Pending Penalty Payment)'
+                                                ? Colors.red
+                                                : (status == 'Completed (Paid Penalty)'
+                                                    ? Colors.green
+                                                    : Colors.green))),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
                             ),
+                            onTap: () async {
+                              final result = await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => MyBookingDetailsPage(
+                                    bookingData: booking.data() as Map<String, dynamic>,
+                                    initialStatus: status,
+                                    bookingId: booking.id,
+                                    initialStatusColor: status == 'Upcoming'
+                                        ? Colors.purple
+                                        : (status == 'Ongoing'
+                                            ? Colors.blue
+                                            : (status == 'Completed (Pending Penalty Payment)'
+                                                ? Colors.red
+                                                : (status == 'Completed (Paid Penalty)'
+                                                    ? Colors.green
+                                                    : Colors.green))),
+                                  ),
+                                ),
+                              );
+                              if (result == true) {
+                                setState(() {});
+                              }
+                            },
                           ),
                         );
-                        if (result == true) {
-                          setState(() {}); // Trigger re-fetch from Firestore
-                        }
                       },
-                    ),
-                  );
-                },
-              );
-            },
-          );
-        },
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
       bottomNavigationBar: BottomNavigationBar(
         items: [
@@ -210,6 +321,7 @@ class _MyBookingPageState extends State<MyBookingPage> {
     );
   }
 }
+
 
 
 class MyBookingDetailsPage extends StatefulWidget {
