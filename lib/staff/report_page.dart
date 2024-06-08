@@ -133,7 +133,7 @@ class _ReportPageState extends State<ReportPage> {
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.receipt, size: 24),
-            label: 'Service Report',
+            label: 'Generate Report',
           ),
         ],
                 selectedItemColor: Colors.black,

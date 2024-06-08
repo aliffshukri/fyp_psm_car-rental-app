@@ -177,7 +177,7 @@ class _StaffCarRentalPageState extends State<StaffCarRentalPage> {
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.receipt, size: 24),
-            label: 'Service Report',
+            label: 'Generate Report',
           ),
         ],
         selectedItemColor: Colors.black,
@@ -211,7 +211,6 @@ class _StaffCarRentalPageState extends State<StaffCarRentalPage> {
               );
               break;
             case 4:
-              // Navigate to service report page
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (context) => ReportPage()),

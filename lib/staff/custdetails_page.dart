@@ -36,13 +36,16 @@ class _CustDetailsPageState extends State<CustDetailsPage> {
 
   Future<void> _deleteAccount(String customerId, String customerEmail) async {
     try {
-      User? user = (await FirebaseAuth.instance.fetchSignInMethodsForEmail(customerEmail)).isNotEmpty
-          ? FirebaseAuth.instance.currentUser
-          : null;
-
-      if (user != null) {
-        await FirebaseFirestore.instance.collection('customer').doc(customerId).delete();
-        await user.delete();
+      // Fetch the user by email
+      List<String> signInMethods = await FirebaseAuth.instance.fetchSignInMethodsForEmail(customerEmail);
+      if (signInMethods.isNotEmpty) {
+        User? user = FirebaseAuth.instance.currentUser;
+        if (user != null && user.email == customerEmail) {
+          await FirebaseFirestore.instance.collection('customer').doc(customerId).delete();
+          await user.delete();
+        } else {
+          throw Exception('User not found or email mismatch');
+        }
       } else {
         throw Exception('User not found');
       }
@@ -51,9 +54,32 @@ class _CustDetailsPageState extends State<CustDetailsPage> {
     }
   }
 
-  // Disabling/enabling accounts requires server-side functions using Firebase Admin SDK
   Future<void> _disableAccount(String customerId, bool isDisabled) async {
-    // Implement server-side function to disable account using Firebase Admin SDK
+    try {
+      await FirebaseFirestore.instance.collection('customer').doc(customerId).update({
+        'isDisabled': isDisabled,
+      });
+    } catch (e) {
+      print('Error disabling/enabling account: $e');
+    }
+  }
+
+  Future<void> _checkUserStatus() async {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('customer').doc(user.uid).get();
+      if (userDoc.exists) {
+        bool isDisabled = userDoc['isDisabled'];
+        if (isDisabled) {
+          // Sign out the user if they are disabled
+          await FirebaseAuth.instance.signOut();
+          // Optionally show a message to the user
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Your account has been disabled.'),
+          ));
+        }
+      }
+    }
   }
 
   void _showConfirmationDialog(BuildContext context, String title, String content, VoidCallback onConfirm) {
@@ -210,7 +236,7 @@ class _CustDetailsPageState extends State<CustDetailsPage> {
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.receipt, size: 24),
-            label: 'Service Report',
+            label: 'Generate Report',
           ),
         ],
         selectedItemColor: Colors.black,
@@ -295,10 +321,7 @@ class MoreCustDetailsPage extends StatelessWidget {
         centerTitle: true,
         title: Text(
           "Rental Car Management",
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Color.fromARGB(255, 173, 129, 80),
       ),
@@ -328,6 +351,7 @@ class MoreCustDetailsPage extends StatelessWidget {
                   Text('Name: ${customerData['name']}'),
                   Text('IC Number: ${customerData['icNumber']}'),
                   Text('Address: ${customerData['address']}'),
+                  Text('Age: ${customerData['age']}'),
                   Text('Phone Number: ${customerData['phoneNumber']}'),
                   Text('Email: ${customerData['email']}'),
                   SizedBox(height: 20),

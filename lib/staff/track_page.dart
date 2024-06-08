@@ -104,7 +104,7 @@ class _TrackPageState extends State<TrackPage> {
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.receipt, size: 24),
-            label: 'Service Report',
+            label: 'Generate Report',
           ),
         ],
         selectedItemColor: Colors.black,
@@ -138,7 +138,7 @@ class _TrackPageState extends State<TrackPage> {
               // Navigate to map page
               break;
             case 4:
-              // Navigate to service report page
+
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (context) => ReportPage()),

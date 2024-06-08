@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:fyp_psm/pages/home_page.dart';
@@ -21,103 +22,137 @@ class _LoginPageState extends State<LoginPage> {
   bool _obscureText = true; // Track whether password text is obscured
 
   Future<void> logIn(BuildContext context) async {
-    if (_role.isEmpty) {
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text("Role not selected"),
-            content: Text("Please select your role."),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: Text('OK'),
-              ),
-            ],
-          );
-        },
-      );
-      return; // Exit the function if role not selected
-    }
-
+  if (_role.isEmpty) {
     showDialog(
       context: context,
-      barrierDismissible: false,
       builder: (BuildContext context) {
-        return Center(
-          child: CircularProgressIndicator(),
+        return AlertDialog(
+          title: Text("Role not selected"),
+          content: Text("Please select your role."),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('OK'),
+            ),
+          ],
         );
       },
     );
+    return; // Exit the function if role not selected
+  }
 
-    try {
-      if (_role == 'Customer') {
-        // Check if entered credentials match admin credentials
-        String adminEmail = 'admin@carapp.com'; // Admin email
-        String adminPassword = 'admin@123'; // Admin password
-        String enteredEmail = _emailController.text.trim();
-        String enteredPassword = _passwordController.text.trim();
-        if (enteredEmail == adminEmail && enteredPassword == adminPassword) {
-          // If admin credentials used for customer role, show error message
-          throw Exception("Admin credentials cannot be used to log in as a customer.");
-        }
-        
-        // Perform customer login using Firebase
-        await FirebaseAuth.instance.signInWithEmailAndPassword(
-          email: enteredEmail, 
-          password: enteredPassword,
-        );
-      } else if (_role == 'Admin') {
-        // Check if the entered credentials are for admin
-        String adminEmail = 'admin@carapp.com'; // Change to your admin email
-        String adminPassword = 'admin@123'; // Change to your admin password
-        String enteredEmail = _emailController.text.trim();
-        String enteredPassword = _passwordController.text.trim();
-        if (enteredEmail == adminEmail && enteredPassword == adminPassword) {
-          // Navigate to StaffCarRentalPage after successful admin login
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => StaffCarRentalPage()),
-          );
-          return; // Exit the function after navigation
-        } else {
-          // If selected role is Admin but entered credentials don't match admin credentials
-          throw Exception("Incorrect admin credentials");
-        }
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (BuildContext context) {
+      return Center(
+        child: CircularProgressIndicator(),
+      );
+    },
+  );
+
+  try {
+    if (_role == 'Customer') {
+      // Check if entered credentials match admin credentials
+      String adminEmail = 'admin@carapp.com'; // Admin email
+      String adminPassword = 'admin@123'; // Admin password
+      String enteredEmail = _emailController.text.trim();
+      String enteredPassword = _passwordController.text.trim();
+      if (enteredEmail == adminEmail && enteredPassword == adminPassword) {
+        // If admin credentials used for customer role, show error message
+        throw Exception("Admin credentials cannot be used to log in as a customer.");
       }
 
-      Navigator.of(context, rootNavigator: true).pop();
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => HomePage()),
+      // Perform customer login using Firebase
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: enteredEmail,
+        password: enteredPassword,
       );
-    } catch (e) {
-      Navigator.of(context, rootNavigator: true).pop();
 
-      print("Login failed: $e");
-      
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text("Login Error"),
-            content: Text("User not found or incorrect credentials. Please try again."),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: Text('OK'),
-              ),
-            ],
-          );
-        },
-      );
+      // Check if the user's account is disabled
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('customer').doc(user.uid).get();
+        if (userDoc.exists) {
+          bool isDisabled = userDoc['isDisabled'];
+          if (isDisabled) {
+            // Sign out the user if they are disabled
+            await FirebaseAuth.instance.signOut();
+            Navigator.of(context, rootNavigator: true).pop();
+            // Show a message to the user
+            showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  title: Text("Account Disabled"),
+                  content: Text("Your account has been disabled. Please contact support for more information."),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      child: Text('OK'),
+                    ),
+                  ],
+                );
+              },
+            );
+            return; // Exit the function after showing the message
+          }
+        }
+      }
+    } else if (_role == 'Admin') {
+      // Check if the entered credentials are for admin
+      String adminEmail = 'admin@carapp.com'; // Change to your admin email
+      String adminPassword = 'admin@123'; // Change to your admin password
+      String enteredEmail = _emailController.text.trim();
+      String enteredPassword = _passwordController.text.trim();
+      if (enteredEmail == adminEmail && enteredPassword == adminPassword) {
+        // Navigate to StaffCarRentalPage after successful admin login
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => StaffCarRentalPage()),
+        );
+        return; // Exit the function after navigation
+      } else {
+        // If selected role is Admin but entered credentials don't match admin credentials
+        throw Exception("Incorrect admin credentials");
+      }
     }
+
+    Navigator.of(context, rootNavigator: true).pop();
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => HomePage()),
+    );
+  } catch (e) {
+    Navigator.of(context, rootNavigator: true).pop();
+
+    print("Login failed: $e");
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Login Error"),
+          content: Text("User not found or incorrect credentials. Please try again."),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
   }
+}
+
 
   @override
   void dispose(){
