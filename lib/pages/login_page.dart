@@ -54,30 +54,55 @@ class _LoginPageState extends State<LoginPage> {
   );
 
   try {
+    String enteredEmail = _emailController.text.trim();
+    String enteredPassword = _passwordController.text.trim();
+
     if (_role == 'Customer') {
       // Check if entered credentials match admin credentials
       String adminEmail = 'admin@carapp.com'; // Admin email
       String adminPassword = 'admin@123'; // Admin password
-      String enteredEmail = _emailController.text.trim();
-      String enteredPassword = _passwordController.text.trim();
       if (enteredEmail == adminEmail && enteredPassword == adminPassword) {
         // If admin credentials used for customer role, show error message
         throw Exception("Admin credentials cannot be used to log in as a customer.");
       }
 
       // Perform customer login using Firebase
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
+      UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: enteredEmail,
         password: enteredPassword,
       );
 
-      // Check if the user's account is disabled
-      User? user = FirebaseAuth.instance.currentUser;
+      // Check if the user's account is disabled or not verified
+      User? user = userCredential.user;
       if (user != null) {
         DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('customer').doc(user.uid).get();
         if (userDoc.exists) {
-          bool isDisabled = userDoc['isDisabled'];
-          if (isDisabled) {
+          bool isDisabled = userDoc['isDisabled'] ?? false;
+          bool isVerified = userDoc['isVerified'] ?? false;
+          if (!isVerified) {
+            // Sign out the user if they are not verified
+            await FirebaseAuth.instance.signOut();
+            Navigator.of(context, rootNavigator: true).pop();
+            // Show a message to the user
+            showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  title: Text("Account Not Verified"),
+                  content: Text("Your account has not been verified by the admin. Please wait for verification."),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      child: Text('OK'),
+                    ),
+                  ],
+                );
+              },
+            );
+            return; // Exit the function after showing the message
+          } else if (isDisabled) {
             // Sign out the user if they are disabled
             await FirebaseAuth.instance.signOut();
             Navigator.of(context, rootNavigator: true).pop();
@@ -101,14 +126,18 @@ class _LoginPageState extends State<LoginPage> {
             );
             return; // Exit the function after showing the message
           }
+        } else {
+          // User document does not exist
+          throw Exception("User document not found.");
         }
+      } else {
+        // User is null
+        throw Exception("User not found.");
       }
     } else if (_role == 'Admin') {
       // Check if the entered credentials are for admin
       String adminEmail = 'admin@carapp.com'; // Change to your admin email
       String adminPassword = 'admin@123'; // Change to your admin password
-      String enteredEmail = _emailController.text.trim();
-      String enteredPassword = _passwordController.text.trim();
       if (enteredEmail == adminEmail && enteredPassword == adminPassword) {
         // Navigate to StaffCarRentalPage after successful admin login
         Navigator.pushReplacement(
@@ -138,7 +167,17 @@ class _LoginPageState extends State<LoginPage> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text("Login Error"),
-          content: Text("User not found or incorrect credentials. Please try again."),
+          content: Text(e is FirebaseAuthException && e.code == 'user-not-found'
+              ? "User not found. Please check your credentials."
+              : e is FirebaseAuthException && e.code == 'wrong-password'
+              ? "Incorrect password. Please try again."
+              : e is Exception && e.toString().contains("Admin credentials cannot be used to log in as a customer.")
+              ? "Admin credentials cannot be used to log in as a customer."
+              : e is Exception && e.toString().contains("User document not found.")
+              ? "User document not found. Please contact support."
+              : e is Exception && e.toString().contains("User not found.")
+              ? "User not found. Please check your credentials."
+              : "Login failed. Please try again."),
           actions: [
             TextButton(
               onPressed: () {
@@ -152,6 +191,7 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 }
+
 
 
   @override

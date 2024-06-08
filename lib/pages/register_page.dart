@@ -283,11 +283,12 @@ class _RegisterPageState extends State<RegisterPage> {
       'age': age,  // Save age
       'drivingLicenseURL': drivingLicenseURL,  // Save driving license URL
       'malaysianIdURL': malaysianIdURL,  // Save Malaysian ID URL
-      // Add more fields as needed
+      'isVerified': false,  // Add isVerified field and set to false
+      'isDisabled': false,
     });
 
     // Step 5: Show success pop-up message
-    _showPopUpMessage('Submission Successful', 'Your registration was successful!');
+    _showPopUpMessage('Submission Successful', 'Your registration was successful! Please wait for the admin to verify your account.');
 
     // Step 6: Navigate to the next screen
     Navigator.pushReplacement(

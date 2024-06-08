@@ -9,6 +9,7 @@ import 'package:fyp_psm/staff/track_page.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+
 class CustDetailsPage extends StatefulWidget {
   const CustDetailsPage({Key? key}) : super(key: key);
 
@@ -54,15 +55,21 @@ class _CustDetailsPageState extends State<CustDetailsPage> {
     }
   }
 
-  Future<void> _disableAccount(String customerId, bool isDisabled) async {
-    try {
-      await FirebaseFirestore.instance.collection('customer').doc(customerId).update({
-        'isDisabled': isDisabled,
-      });
-    } catch (e) {
-      print('Error disabling/enabling account: $e');
-    }
+  Future<void> _disableAccount(String customerId) async {
+  try {
+    // Get the current value of 'isDisabled' field
+    DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('customer').doc(customerId).get();
+    bool currentStatus = userDoc['isDisabled'] ?? false;
+
+    // Toggle the value
+    await FirebaseFirestore.instance.collection('customer').doc(customerId).update({
+      'isDisabled': !currentStatus,
+    });
+  } catch (e) {
+    print('Error disabling/enabling account: $e');
   }
+}
+
 
   Future<void> _checkUserStatus() async {
     User? user = FirebaseAuth.instance.currentUser;
@@ -108,174 +115,197 @@ class _CustDetailsPageState extends State<CustDetailsPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        centerTitle: true,
-        title: Text(
-          "Rental Car Management",
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(
+      automaticallyImplyLeading: false,
+      centerTitle: true,
+      title: Text(
+        "Rental Car Management",
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
         ),
-        actions: [
-          IconButton(
-            onPressed: () async {
-              await FirebaseAuth.instance.signOut();
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => LoginPage(showRegisterPage: () {})),
+      ),
+      actions: [
+        IconButton(
+          icon: StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('customer')
+                .where('isVerified', isEqualTo: false)
+                .snapshots(),
+            builder: (context, snapshot) {
+              int waitingCount = 0;
+              if (snapshot.hasData) {
+                waitingCount = snapshot.data!.docs.length;
+              }
+              return Stack(
+                children: [
+                  Icon(Icons.inbox, size: 40.0),
+                  if (waitingCount > 0)
+                    Positioned(
+                      right: 0,
+                      child: CircleAvatar(
+                        radius: 10,
+                        backgroundColor: Colors.red,
+                        child: Text(
+                          '$waitingCount',
+                          style: TextStyle(fontSize: 12, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                ],
               );
             },
-            icon: Icon(
-              Icons.logout,
-              size: 40.0,
-              color: const Color.fromARGB(255, 7, 7, 7),
-            ),
           ),
-        ],
-        elevation: 0,
-        backgroundColor: Color.fromARGB(255, 173, 129, 80),
-      ),
-      body: StreamBuilder(
-        stream: FirebaseFirestore.instance.collection('customer').snapshots(),
-        builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
-          final customers = snapshot.data!.docs;
-          return ListView.builder(
-            itemCount: customers.length,
-            itemBuilder: (context, index) {
-              final customerData = customers[index].data() as Map<String, dynamic>;
-              final customerId = customers[index].id;
-              final fullName = customerData['name'];
-              final phoneNumber = customerData['phoneNumber'];
-              final customerEmail = customerData['email'];
-              final isDisabled = customerData['isDisabled'] ?? false;
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => VerifyCustomerAccountsPage()),
+            );
+          },
+        ),
+        IconButton(
+          onPressed: () async {
+            await FirebaseAuth.instance.signOut();
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => LoginPage(showRegisterPage: () {})),
+            );
+          },
+          icon: Icon(
+            Icons.logout,
+            size: 40.0,
+            color: const Color.fromARGB(255, 7, 7, 7),
+          ),
+        ),
+      ],
+      elevation: 0,
+      backgroundColor: Color.fromARGB(255, 173, 129, 80),
+    ),
+    body: StreamBuilder(
+      stream: FirebaseFirestore.instance.collection('customer').where('isVerified', isEqualTo: true).snapshots(),
+      builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+        final customers = snapshot.data!.docs;
+        return ListView.builder(
+          itemCount: customers.length,
+          itemBuilder: (context, index) {
+            final customerData = customers[index].data() as Map<String, dynamic>;
+            final customerId = customers[index].id;
+            final fullName = customerData['name'];
+            final phoneNumber = customerData['phoneNumber'];
+            final customerEmail = customerData['email'];
+            final isDisabled = customerData['isDisabled'] ?? false;
 
-              return Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Card(
-                  child: ListTile(
-                    title: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Full Name: $fullName'),
-                        Text('Phone Number: $phoneNumber'),
-                        Text('Email: $customerEmail'),
-                      ],
+            return Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Card(
+                child: ListTile(
+                  title: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Full Name: $fullName'),
+                      Text('Phone Number: $phoneNumber'),
+                      Text('Email: $customerEmail'),
+                    ],
+                  ),
+                  trailing: IconButton(
+                    icon: Icon(
+                      isDisabled ? Icons.lock_open : Icons.lock,
+                      color: isDisabled ? Colors.green : Colors.red,
                     ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: Icon(
-                            isDisabled ? Icons.lock_open : Icons.lock,
-                            color: isDisabled ? Colors.green : Colors.red,
-                          ),
-                          onPressed: () {
-                            _showConfirmationDialog(
-                              context,
-                              isDisabled ? 'Enable Account' : 'Disable Account',
-                              isDisabled
-                                  ? 'Are you sure you want to enable this account?'
-                                  : 'Are you sure you want to disable this account?',
-                              () => _disableAccount(customerId, !isDisabled),
-                            );
-                          },
-                        ),
-                        IconButton(
-                          icon: Icon(Icons.delete, color: Colors.red),
-                          onPressed: () {
-                            _showConfirmationDialog(
-                              context,
-                              'Delete Account',
-                              'Are you sure you want to delete this account?',
-                              () => _deleteAccount(customerId, customerEmail),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                    onTap: () {
-                      Navigator.push(
+                    onPressed: () {
+                      _showConfirmationDialog(
                         context,
-                        MaterialPageRoute(builder: (context) => MoreCustDetailsPage(customerEmail: customerEmail)),
+                        isDisabled ? 'Enable Account' : 'Disable Account',
+                        isDisabled
+                            ? 'Are you sure you want to enable this account?'
+                            : 'Are you sure you want to disable this account?',
+                        () => _disableAccount(customerId),
                       );
                     },
                   ),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => MoreCustDetailsPage(customerEmail: customerEmail)),
+                    );
+                  },
                 ),
-              );
-            },
-          );
-        },
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        items: [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person, size: 24),
-            label: 'Cust Details',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.car_rental, size: 24),
-            label: 'Car Details',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.book, size: 24),
-            label: 'Cust Booking',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.map, size: 24),
-            label: 'Track Customer',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.receipt, size: 24),
-            label: 'Generate Report',
-          ),
-        ],
-        selectedItemColor: Colors.black,
-        unselectedItemColor: Colors.grey,
-        currentIndex: 0,
-        onTap: (int index) {
-          switch (index) {
-            case 0:
-              // Navigate to current page
-              break;
-            case 1:
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => StaffCarRentalPage()),
-              );
-              break;
-            case 2:
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => CustomerBookingPage()),
-              );
-              break;
-            case 3:
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => TrackPage()),
-              );
-              break;
-            case 4:
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => ReportPage()),
-              );
-              break;
-          }
-        },
-      ),
-    );
-  }
+              ),
+            );
+          },
+        );
+      },
+    ),
+    bottomNavigationBar: BottomNavigationBar(
+      items: [
+        BottomNavigationBarItem(
+          icon: Icon(Icons.person, size: 24),
+          label: 'Cust Details',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.car_rental, size: 24),
+          label: 'Car Details',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.book, size: 24),
+          label: 'Cust Booking',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.map, size: 24),
+          label: 'Track Customer',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.receipt, size: 24),
+          label: 'Generate Report',
+        ),
+      ],
+      selectedItemColor: Colors.black,
+      unselectedItemColor: Colors.grey,
+      currentIndex: 0,
+      onTap: (int index) {
+        switch (index) {
+          case 0:
+            // Navigate to current page
+            break;
+          case 1:
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => StaffCarRentalPage()),
+            );
+            break;
+          case 2:
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => CustomerBookingPage()),
+            );
+            break;
+          case 3:
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => TrackPage()),
+            );
+            break;
+          case 4:
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => ReportPage()),
+            );
+            break;
+        }
+      },
+    ),
+  );
+}
+
+
 }
 
 class MoreCustDetailsPage extends StatelessWidget {
@@ -382,6 +412,167 @@ class MoreCustDetailsPage extends StatelessWidget {
               ),
             );
           }
+        },
+      ),
+    );
+  }
+}
+
+
+
+class VerifyCustomerAccountsPage extends StatelessWidget {
+  const VerifyCustomerAccountsPage({Key? key}) : super(key: key);
+
+  Future<void> _verifyAccount(String customerId) async {
+    await FirebaseFirestore.instance.collection('customer').doc(customerId).update({'isVerified': true});
+  }
+
+  Future<void> _deleteAccount(String customerId) async {
+    await FirebaseFirestore.instance.collection('customer').doc(customerId).delete();
+  }
+
+  Future<Map<String, dynamic>> _fetchCustomerDetails(String customerId) async {
+    DocumentSnapshot customerDoc = await FirebaseFirestore.instance.collection('customer').doc(customerId).get();
+    Map<String, dynamic> customerData = customerDoc.data() as Map<String, dynamic>;
+
+    Reference storageRef = FirebaseStorage.instance.ref().child('files/$customerId');
+
+    try {
+      String drivingLicenseUrl = await storageRef.child('driving_license.pdf').getDownloadURL();
+      String malaysianIdUrl = await storageRef.child('malaysian_id.pdf').getDownloadURL();
+
+      customerData['drivingLicenseUrl'] = drivingLicenseUrl;
+      customerData['malaysianIdUrl'] = malaysianIdUrl;
+    } catch (e) {
+      print('Error fetching files from storage: $e');
+      customerData['drivingLicenseUrl'] = null;
+      customerData['malaysianIdUrl'] = null;
+    }
+
+    return customerData;
+  }
+
+  void _showCustomerDetails(BuildContext context, Map<String, dynamic> customerDetails, String customerId) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (BuildContext context) {
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Customer Details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                SizedBox(height: 10),
+                Text('Name: ${customerDetails['name']}'),
+                Text('IC Number: ${customerDetails['icNumber']}'),
+                Text('Address: ${customerDetails['address']}'),
+                Text('Age: ${customerDetails['age']}'),
+                Text('Phone Number: ${customerDetails['phoneNumber']}'),
+                Text('Email: ${customerDetails['email']}'),
+                SizedBox(height: 20),
+                Text('Documents', style: TextStyle(fontWeight: FontWeight.bold)),
+                customerDetails['drivingLicenseUrl'] != null
+                    ? GestureDetector(
+                        onTap: () => launch(customerDetails['drivingLicenseUrl']),
+                        child: Text('View Driving License', style: TextStyle(color: Colors.blue)),
+                      )
+                    : Text('Driving License not available'),
+                customerDetails['malaysianIdUrl'] != null
+                    ? GestureDetector(
+                        onTap: () => launch(customerDetails['malaysianIdUrl']),
+                        child: Text('View Malaysian ID', style: TextStyle(color: Colors.blue)),
+                      )
+                    : Text('Malaysian ID not available'),
+                SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      child: Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () async {
+                        await _verifyAccount(customerId);
+                        Navigator.of(context).pop();
+                      },
+                      child: Text('Verify'),
+                    ),
+                    TextButton(
+                      onPressed: () async {
+                        await _deleteAccount(customerId);
+                        Navigator.of(context).pop();
+                      },
+                      child: Text('Delete'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("Verify Customer Accounts"),
+        backgroundColor: Color.fromARGB(255, 173, 129, 80),
+      ),
+      body: StreamBuilder(
+        stream: FirebaseFirestore.instance
+            .collection('customer')
+            .where('isVerified', isEqualTo: false)
+            .snapshots(),
+        builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+          final customers = snapshot.data!.docs;
+          if (customers.isEmpty) {
+            return Center(child: Text('No accounts to verify'));
+          }
+          return ListView.builder(
+            itemCount: customers.length,
+            itemBuilder: (context, index) {
+              final customerData = customers[index].data() as Map<String, dynamic>;
+              final customerId = customers[index].id;
+              final fullName = customerData['name'];
+              final phoneNumber = customerData['phoneNumber'];
+              final customerEmail = customerData['email'];
+
+              return Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Card(
+                  child: ListTile(
+                    title: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Full Name: $fullName'),
+                        Text('Phone Number: $phoneNumber'),
+                        Text('Email: $customerEmail'),
+                      ],
+                    ),
+                    onTap: () async {
+                      Map<String, dynamic> customerDetails = await _fetchCustomerDetails(customerId);
+                      _showCustomerDetails(context, customerDetails, customerId);
+                    },
+                  ),
+                ),
+              );
+            },
+          );
         },
       ),
     );
