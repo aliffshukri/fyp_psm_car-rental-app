@@ -99,6 +99,10 @@ class _MyBookingPageState extends State<MyBookingPage> {
                     }
                   }
                     // Check if the status is Completed (Paid Penalty)
+                        if (booking['status'] == 'Ongoing') {
+                          status = 'Ongoing';
+                  }
+                    // Check if the status is Completed (Paid Penalty)
                       if (booking['status'] == 'Completed (Paid Penalty)') {
                         status = 'Completed (Paid Penalty)';
                   }
@@ -122,11 +126,13 @@ class _MyBookingPageState extends State<MyBookingPage> {
                             style: TextStyle(
                               color: status == 'Upcoming'
                                   ? Colors.purple
-                                  : (status == 'Completed (Pending Penalty Payment)'
-                                      ? Colors.red
-                                      : (status == 'Completed (Paid Penalty)'
-                                          ? Colors.green
-                                          : Colors.green)),
+                                  :(status == 'Ongoing' 
+                                  ? Colors.blue
+                                    : (status == 'Completed (Pending Penalty Payment)'
+                                        ? Colors.red
+                                        : (status == 'Completed (Paid Penalty)'
+                                            ? Colors.green
+                                            : Colors.green))),
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -142,11 +148,13 @@ class _MyBookingPageState extends State<MyBookingPage> {
                               bookingId: booking.id,
                               initialStatusColor: status == 'Upcoming'
                                   ? Colors.purple
-                                  : (status == 'Completed (Pending Penalty Payment)'
-                                      ? Colors.red
-                                      : (status == 'Completed (Paid Penalty)'
-                                          ? Colors.green
-                                          : Colors.green)),
+                                  :(status == 'Ongoing' 
+                                  ? Colors.blue
+                                    : (status == 'Completed (Pending Penalty Payment)'
+                                        ? Colors.red
+                                        : (status == 'Completed (Paid Penalty)'
+                                            ? Colors.green
+                                            : Colors.green))),
                             ),
                           ),
                         );
@@ -500,4 +508,3 @@ class _MyBookingDetailsPageState extends State<MyBookingDetailsPage> {
     );
   }
 }
-

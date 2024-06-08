@@ -31,7 +31,7 @@ class _SessionPageState extends State<SessionPage> {
     var snapshot = await FirebaseFirestore.instance
         .collection('booking')
         .where('email', isEqualTo: user.email)
-        .where('status', isEqualTo: 'Upcoming')
+        .where('status', whereIn: ['Upcoming', 'Ongoing'])
         .orderBy('startDateTime')
         .limit(1)
         .get();
@@ -49,6 +49,13 @@ class _SessionPageState extends State<SessionPage> {
         isPageLocked = true; // No upcoming bookings
       });
     }
+  }
+
+  Future<void> updateBookingStatus(String bookingId, String status) async {
+    await FirebaseFirestore.instance
+        .collection('booking')
+        .doc(bookingId)
+        .update({'status': status});
   }
 
   @override
@@ -83,7 +90,13 @@ class _SessionPageState extends State<SessionPage> {
                     "COUNTDOWN",
                     style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
-                  CountdownTimer(nearestBookingStart: nearestBookingStart!, onCountdownComplete: fetchNearestUpcomingBooking),
+                  CountdownTimer(
+                    nearestBookingStart: nearestBookingStart!,
+                    onCountdownComplete: () async {
+                      await updateBookingStatus(bookingId, 'Completed');
+                      fetchNearestUpcomingBooking();
+                    },
+                  ),
                   SizedBox(height: 20),
                   ElevatedButton(
                     onPressed: isPageLocked ? showSkipConfirmation : null,
@@ -91,16 +104,21 @@ class _SessionPageState extends State<SessionPage> {
                   ),
                   SizedBox(height: 20),
                   ElevatedButton(
-                    onPressed: isPageLocked || sessionState.isSessionStarted ? null : () {
-                      sessionState.startSession();
-                    },
+                    onPressed: isPageLocked || sessionState.isSessionStarted
+                        ? null
+                        : () async {
+                            sessionState.startSession();
+                            await updateBookingStatus(bookingId, 'Ongoing');
+                          },
                     child: Text("Start Session"),
                   ),
                   SizedBox(height: 20),
                   ElevatedButton(
-                    onPressed: sessionState.isSessionStarted ? () {
-                      showFuelPageConfirmation(sessionState);
-                    } : null,
+                    onPressed: sessionState.isSessionStarted
+                        ? () {
+                            showFuelPageConfirmation(sessionState);
+                          }
+                        : null,
                     child: Text("End Session"),
                     style: ElevatedButton.styleFrom(
                       primary: Colors.black,
@@ -269,6 +287,7 @@ class _SessionPageState extends State<SessionPage> {
     );
   }
 }
+
 
 class CountdownTimer extends StatefulWidget {
   final DateTime nearestBookingStart;

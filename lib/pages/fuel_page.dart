@@ -100,6 +100,11 @@ class _FuelPageState extends State<FuelPage> {
         'isRefuel': _isRefueled,
         'dashboardCar': imageUrl,
       });
+
+      // Update the booking status
+      await FirebaseFirestore.instance.collection('booking').doc(widget.bookingId).update({
+        'status': _isRefueled ? 'Completed' : 'Completed (Pending Penalty Payment)',
+      });
     } catch (error) {
       throw error;
     }

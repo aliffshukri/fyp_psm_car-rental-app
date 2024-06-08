@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'dart:math';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fyp_psm/pages/login_page.dart';
@@ -51,23 +54,35 @@ class _TrackPageState extends State<TrackPage> {
         elevation: 0,
         backgroundColor: Color.fromARGB(255, 173, 129, 80),
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              "Track Page", // Placeholder text for the main page
-              style: TextStyle(fontSize: 20),
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                _showLiveTrackModal(context);
-              },
-              child: Text('Track'),
-            ),
-          ],
-        ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('booking')
+            .where('status', isEqualTo: 'Ongoing')
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return Center(child: CircularProgressIndicator());
+          }
+
+          var ongoingBookings = snapshot.data!.docs;
+
+          if (ongoingBookings.isEmpty) {
+            return Center(
+              child: Text(
+                'No Ongoing Bookings',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            );
+          }
+
+          return ListView.builder(
+            itemCount: ongoingBookings.length,
+            itemBuilder: (context, index) {
+              var booking = ongoingBookings[index];
+              return BookingCard(booking: booking);
+            },
+          );
+        },
       ),
       bottomNavigationBar: BottomNavigationBar(
         items: [
@@ -134,6 +149,12 @@ class _TrackPageState extends State<TrackPage> {
       ),
     );
   }
+}
+
+class BookingCard extends StatelessWidget {
+  final DocumentSnapshot booking;
+
+  const BookingCard({Key? key, required this.booking}) : super(key: key);
 
   void _showLiveTrackModal(BuildContext context) {
     showModalBottomSheet(
@@ -145,6 +166,48 @@ class _TrackPageState extends State<TrackPage> {
           child: LiveTrackPage(),
         );
       },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    DateTime startDateTime = booking['startDateTime'].toDate();
+    String brand = booking['brand'];
+    String carModel = booking['carModel'];
+    String plateNumber = booking['plateNumber'];
+    String status = booking['status'];
+    Color statusColor = status == 'Ongoing' ? Colors.blue : Colors.purple;
+
+    return Card(
+      margin: EdgeInsets.all(8.0),
+      child: ListTile(
+        title: Text(
+          'Start Date & Time: ${DateFormat('dd-MM-yyyy hh:mm a').format(startDateTime)}',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Brand: $brand'),
+            Text('Model: $carModel'),
+            Text('Plate Number: $plateNumber'),
+            Text(
+              'Status: $status',
+              style: TextStyle(
+                color: statusColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 10),
+            ElevatedButton(
+              onPressed: () {
+                _showLiveTrackModal(context);
+              },
+              child: Text('Track'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -231,3 +294,4 @@ class _LiveTrackPageState extends State<LiveTrackPage> {
     );
   }
 }
+

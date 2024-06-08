@@ -6,7 +6,6 @@ import 'package:fyp_psm/staff/car_rental_page.dart';
 import 'package:fyp_psm/staff/cust_booking_page.dart';
 import 'package:fyp_psm/staff/report_page.dart';
 import 'package:fyp_psm/staff/track_page.dart';
-import 'dart:async';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -33,6 +32,53 @@ class _CustDetailsPageState extends State<CustDetailsPage> {
         adminEmail = currentUser.email ?? '';
       });
     }
+  }
+
+  Future<void> _deleteAccount(String customerId, String customerEmail) async {
+    try {
+      User? user = (await FirebaseAuth.instance.fetchSignInMethodsForEmail(customerEmail)).isNotEmpty
+          ? FirebaseAuth.instance.currentUser
+          : null;
+
+      if (user != null) {
+        await FirebaseFirestore.instance.collection('customer').doc(customerId).delete();
+        await user.delete();
+      } else {
+        throw Exception('User not found');
+      }
+    } catch (e) {
+      print('Error deleting account: $e');
+    }
+  }
+
+  // Disabling/enabling accounts requires server-side functions using Firebase Admin SDK
+  Future<void> _disableAccount(String customerId, bool isDisabled) async {
+    // Implement server-side function to disable account using Firebase Admin SDK
+  }
+
+  void _showConfirmationDialog(BuildContext context, String title, String content, VoidCallback onConfirm) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(content),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                onConfirm();
+                Navigator.of(context).pop();
+              },
+              child: Text('Confirm'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -81,25 +127,62 @@ class _CustDetailsPageState extends State<CustDetailsPage> {
             itemCount: customers.length,
             itemBuilder: (context, index) {
               final customerData = customers[index].data() as Map<String, dynamic>;
+              final customerId = customers[index].id;
               final fullName = customerData['name'];
               final phoneNumber = customerData['phoneNumber'];
               final customerEmail = customerData['email'];
+              final isDisabled = customerData['isDisabled'] ?? false;
+
               return Padding(
                 padding: const EdgeInsets.all(8.0),
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => MoreCustDetailsPage(customerEmail: customerEmail)),
-                    );
-                  },
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Full Name: $fullName'),
-                      Text('Phone Number: $phoneNumber'),
-                      Text('Email: $customerEmail'), // Display customer email
-                    ],
+                child: Card(
+                  child: ListTile(
+                    title: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Full Name: $fullName'),
+                        Text('Phone Number: $phoneNumber'),
+                        Text('Email: $customerEmail'),
+                      ],
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            isDisabled ? Icons.lock_open : Icons.lock,
+                            color: isDisabled ? Colors.green : Colors.red,
+                          ),
+                          onPressed: () {
+                            _showConfirmationDialog(
+                              context,
+                              isDisabled ? 'Enable Account' : 'Disable Account',
+                              isDisabled
+                                  ? 'Are you sure you want to enable this account?'
+                                  : 'Are you sure you want to disable this account?',
+                              () => _disableAccount(customerId, !isDisabled),
+                            );
+                          },
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.delete, color: Colors.red),
+                          onPressed: () {
+                            _showConfirmationDialog(
+                              context,
+                              'Delete Account',
+                              'Are you sure you want to delete this account?',
+                              () => _deleteAccount(customerId, customerEmail),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => MoreCustDetailsPage(customerEmail: customerEmail)),
+                      );
+                    },
                   ),
                 ),
               );
@@ -169,15 +252,12 @@ class _CustDetailsPageState extends State<CustDetailsPage> {
   }
 }
 
-
-
 class MoreCustDetailsPage extends StatelessWidget {
   final String customerEmail;
 
   const MoreCustDetailsPage({Key? key, required this.customerEmail}) : super(key: key);
 
   Future<Map<String, dynamic>> _fetchCustomerDetails() async {
-    // Fetch customer details from Firestore
     QuerySnapshot snapshot = await FirebaseFirestore.instance
         .collection('customer')
         .where('email', isEqualTo: customerEmail)
@@ -190,7 +270,6 @@ class MoreCustDetailsPage extends StatelessWidget {
     DocumentSnapshot customerDoc = snapshot.docs.first;
     Map<String, dynamic> customerData = customerDoc.data() as Map<String, dynamic>;
 
-    // Fetch file URLs from Firebase Storage
     String uid = customerDoc.id;
     Reference storageRef = FirebaseStorage.instance.ref().child('files/$uid');
 
@@ -202,7 +281,6 @@ class MoreCustDetailsPage extends StatelessWidget {
       customerData['malaysianIdUrl'] = malaysianIdUrl;
     } catch (e) {
       print('Error fetching files from storage: $e');
-      // Handle error, e.g., set URLs to null or empty
       customerData['drivingLicenseUrl'] = null;
       customerData['malaysianIdUrl'] = null;
     }
@@ -285,10 +363,3 @@ class MoreCustDetailsPage extends StatelessWidget {
     );
   }
 }
-
-
-
-
-
-
-
