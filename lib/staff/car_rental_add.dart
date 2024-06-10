@@ -63,8 +63,9 @@ class _CarRentalAddState extends State<CarRentalAdd> {
         'numberOfSeats': int.parse(_numberOfSeatsController.text),
         'transmissionType': _transmissionTypeController.text,
         'year': int.parse(_yearController.text),
-        'quantity': int.parse(_quantityController.text), // Add quantity to Firestore data
-        'priceHour': double.parse(_priceHourController.text), // Add price per hour to Firestore data as double
+        'quantity': int.parse(_quantityController.text),
+        'availableQty': int.parse(_quantityController.text),
+        'priceHour': double.parse(_priceHourController.text),
       });
 
       for (int i = 0; i < _plateNumberControllers.length; i++) {

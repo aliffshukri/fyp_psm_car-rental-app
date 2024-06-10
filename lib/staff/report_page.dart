@@ -187,85 +187,134 @@ class _ReportPageState extends State<ReportPage> {
   }
 
   Widget _buildChart() {
-  switch (reportType) {
-    case 'Booking':
-      return SfCartesianChart(
-        primaryXAxis: CategoryAxis(),
-        legend: Legend(isVisible: true),
-        series: <CartesianSeries>[
-          LineSeries<Map<String, dynamic>, String>(
-            dataSource: reportData,
-            xValueMapper: (Map<String, dynamic> data, _) => data['category'],
-            yValueMapper: (Map<String, dynamic> data, _) => data['count'] as int,
-            color: Colors.yellow,
-            name: 'Past 5 days',
-          ),
-          LineSeries<Map<String, dynamic>, String>(
-            dataSource: reportData,
-            xValueMapper: (Map<String, dynamic> data, _) => data['category'],
-            yValueMapper: (Map<String, dynamic> data, _) => data['count'] as int,
-            color: Colors.green,
-            name: 'Past a week',
-          ),
-          LineSeries<Map<String, dynamic>, String>(
-            dataSource: reportData,
-            xValueMapper: (Map<String, dynamic> data, _) => data['category'],
-            yValueMapper: (Map<String, dynamic> data, _) => data['count'] as int,
-            color: Colors.blue,
-            name: 'Past a month',
-          ),
-        ],
-      );
-    case 'Fuel Status':
-      return SfCircularChart(
-        legend: Legend(isVisible: true),
-        series: <CircularSeries>[
-          PieSeries<Map<String, dynamic>, String>(
-            dataSource: reportData,
-            xValueMapper: (Map<String, dynamic> data, _) => data['category'],
-            yValueMapper: (Map<String, dynamic> data, _) => data['count'] as int,
-            dataLabelSettings: DataLabelSettings(isVisible: true),
-            pointColorMapper: (Map<String, dynamic> data, _) => data['category'] == 'Yes' ? Colors.green : Colors.red,
-          ),
-        ],
-      );
-    case 'Car Rental':
-      return SfCartesianChart(
-        primaryXAxis: CategoryAxis(),
-        series: <CartesianSeries>[
-          ColumnSeries<Map<String, dynamic>, String>(
-            dataSource: reportData,
-            xValueMapper: (Map<String, dynamic> data, _) => data['category'],
-            yValueMapper: (Map<String, dynamic> data, _) => data['count'] as int,
-            dataLabelSettings: DataLabelSettings(isVisible: true),
-          ),
-        ],
-      );
+    switch (reportType) {
+      case 'Booking':
+        return SfCartesianChart(
+          primaryXAxis: CategoryAxis(),
+          legend: Legend(isVisible: true),
+          series: <CartesianSeries>[
+            LineSeries<Map<String, dynamic>, String>(
+              dataSource: reportData,
+              xValueMapper: (Map<String, dynamic> data, _) => data['category'],
+              yValueMapper: (Map<String, dynamic> data, _) => data['count'] as int,
+              color: Colors.yellow,
+              name: 'Past 5 days',
+            ),
+            LineSeries<Map<String, dynamic>, String>(
+              dataSource: reportData,
+              xValueMapper: (Map<String, dynamic> data, _) => data['category'],
+              yValueMapper: (Map<String, dynamic> data, _) => data['count'] as int,
+              color: Colors.green,
+              name: 'Past a week',
+            ),
+            LineSeries<Map<String, dynamic>, String>(
+              dataSource: reportData,
+              xValueMapper: (Map<String, dynamic> data, _) => data['category'],
+              yValueMapper: (Map<String, dynamic> data, _) => data['count'] as int,
+              color: Colors.blue,
+              name: 'Past a month',
+            ),
+          ],
+        );
+      case 'Fuel Status':
+        return SfCircularChart(
+          legend: Legend(isVisible: true),
+          series: <CircularSeries>[
+            PieSeries<Map<String, dynamic>, String>(
+              dataSource: reportData,
+              xValueMapper: (Map<String, dynamic> data, _) => data['category'],
+              yValueMapper: (Map<String, dynamic> data, _) => data['count'] as int,
+              dataLabelSettings: DataLabelSettings(isVisible: true),
+              pointColorMapper: (Map<String, dynamic> data, _) => data['category'] == 'Yes' ? Colors.green : Colors.red,
+            ),
+          ],
+        );
+      case 'Car Rental':
+        final List<Color> colors = [
+          Colors.red,
+          Colors.green,
+          Colors.blue,
+          Colors.orange,
+          Colors.purple,
+          Colors.yellow,
+          Colors.cyan,
+          Colors.pink,
+          // Add more colors if needed
+        ];
 
-    case 'Age Category':
-      return SfCartesianChart(
-        primaryXAxis: CategoryAxis(
-          majorGridLines: MajorGridLines(width: 0),
-        ),
-        primaryYAxis: NumericAxis(
-          minimum: 0,
-          interval: 1,
-          majorGridLines: MajorGridLines(width: 0.5),
-        ),
-        series: <CartesianSeries>[
-          ColumnSeries<Map<String, dynamic>, String>(
-            dataSource: reportData,
-            xValueMapper: (Map<String, dynamic> data, _) => data['category'],
-            yValueMapper: (Map<String, dynamic> data, _) => data['count'] as int,
-            dataLabelSettings: DataLabelSettings(isVisible: true),
-          ),
-        ],
-      );
-    default:
-      return Center(child: Text('Invalid report type'));
+        final List<LegendItem> legendItems = reportData.map((data) {
+          final int index = reportData.indexOf(data);
+          return LegendItem(
+            text: data['category'],
+            iconColor: colors[index % colors.length],
+          );
+        }).toList();
+
+        return Column(
+          children: [
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 8.0,
+              children: legendItems.map((item) {
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.circle, color: item.iconColor, size: 12),
+                    SizedBox(width: 4),
+                    Text(item.text),
+                  ],
+                );
+              }).toList(),
+            ),
+            Expanded(
+              child: SfCartesianChart(
+                primaryXAxis: CategoryAxis(isVisible: false),
+                primaryYAxis: NumericAxis(
+                  minimum: 0,
+                  interval: 1,
+                  majorGridLines: MajorGridLines(width: 0.5),
+                ),
+                legend: Legend(isVisible: false),
+                series: <CartesianSeries>[
+                  ColumnSeries<Map<String, dynamic>, String>(
+                    dataSource: reportData,
+                    xValueMapper: (Map<String, dynamic> data, _) => data['category'],
+                    yValueMapper: (Map<String, dynamic> data, _) => data['count'] as int,
+                    dataLabelSettings: DataLabelSettings(isVisible: true),
+                    pointColorMapper: (Map<String, dynamic> data, int index) => colors[index % colors.length],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      case 'Age Category':
+  return SfCartesianChart(
+    primaryXAxis: CategoryAxis(
+      title: AxisTitle(text: 'Age Category'),
+      majorGridLines: MajorGridLines(width: 0),
+    ),
+    primaryYAxis: NumericAxis(
+      minimum: 0,
+      interval: 1,
+      majorGridLines: MajorGridLines(width: 0.5),
+    ),
+    legend: Legend(isVisible: true),
+    series: <CartesianSeries>[
+      ColumnSeries<Map<String, dynamic>, String>(
+        dataSource: reportData,
+        xValueMapper: (Map<String, dynamic> data, _) => data['category'],
+        yValueMapper: (Map<String, dynamic> data, _) => data['count'] as int,
+        dataLabelSettings: DataLabelSettings(isVisible: true),
+        color: Colors.blue, // You can assign a color if needed
+      ),
+    ],
+  );
+
+      default:
+        return Center(child: Text('Invalid report type'));
+    }
   }
-}
-
 
   Future<void> generateReport() async {
     DateTime now = DateTime.now();
@@ -323,19 +372,19 @@ class _ReportPageState extends State<ReportPage> {
         }).toList();
       });
     } else if (reportType == 'Car Rental') {
-        querySnapshot = await FirebaseFirestore.instance
-            .collection('rentalCar')
-            .get();
-        List<Map<String, dynamic>> data = querySnapshot.docs.map((doc) {
-          return {
-            'category': '${doc['brand']} ${doc['carModel']}',
-            'count': doc['quantity'],
-          };
-        }).toList();
+      querySnapshot = await FirebaseFirestore.instance
+          .collection('rentalCar')
+          .get();
+      List<Map<String, dynamic>> data = querySnapshot.docs.map((doc) {
+        return {
+          'category': '${doc['brand']} ${doc['carModel']}',
+          'count': doc['quantity'],
+        };
+      }).toList();
 
-        setState(() {
-          reportData = data;
-        });
+      setState(() {
+        reportData = data;
+      });
     } else if (reportType == 'Age Category') {
       querySnapshot = await FirebaseFirestore.instance.collection('customer').get();
       List<Map<String, dynamic>> data = querySnapshot.docs.map((doc) {
@@ -364,7 +413,6 @@ class _ReportPageState extends State<ReportPage> {
         }).toList();
       });
     }
-
   }
 
   Future<void> downloadReport() async {
@@ -405,4 +453,11 @@ class _ReportPageState extends State<ReportPage> {
       SnackBar(content: Text('Report saved as ${file.path}')),
     );
   }
+}
+
+class LegendItem {
+  final String text;
+  final Color iconColor;
+
+  LegendItem({required this.text, required this.iconColor});
 }

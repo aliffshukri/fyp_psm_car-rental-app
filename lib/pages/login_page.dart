@@ -85,6 +85,7 @@ class _LoginPageState extends State<LoginPage> {
             await FirebaseAuth.instance.signOut();
             Navigator.of(context, rootNavigator: true).pop();
             // Show a message to the user
+            // ignore: use_build_context_synchronously
             showDialog(
               context: context,
               builder: (BuildContext context) {

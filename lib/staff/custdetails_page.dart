@@ -223,8 +223,10 @@ Widget build(BuildContext context) {
                   ),
                   trailing: IconButton(
                     icon: Icon(
-                      isDisabled ? Icons.lock_open : Icons.lock,
-                      color: isDisabled ? Colors.green : Colors.red,
+                      isDisabled ? Icons.lock : Icons.lock_open,
+                      color: isDisabled ? Colors.red : Colors.green,
+                     /* isDisabled ? Icons.lock_open : Icons.lock,
+                      color: isDisabled ? Colors.green : Colors.red,*/
                     ),
                     onPressed: () {
                       _showConfirmationDialog(
@@ -373,54 +375,98 @@ class MoreCustDetailsPage extends StatelessWidget {
             return Center(child: Text('No customer data found'));
           } else {
             var customerData = snapshot.data!;
-            return Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(height: 20),
-                  Text(
-                    'Customer Details',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            return SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Center(
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16.0),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8.0),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.5),
+                          spreadRadius: 5,
+                          blurRadius: 7,
+                          offset: Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Customer Details',
+                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(height: 10),
+                        Divider(),
+                        _buildDetailRow('Name:', customerData['name']),
+                        _buildDetailRow('IC Number:', customerData['icNumber']),
+                        _buildDetailRow('Address:', customerData['address']),
+                        _buildDetailRow('Age:', customerData['age'].toString()),
+                        _buildDetailRow('Phone Number:', customerData['phoneNumber']),
+                        _buildDetailRow('Email:', customerData['email']),
+                        SizedBox(height: 20),
+                        Text(
+                          'Documents',
+                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(height: 10),
+                        Divider(),
+                        _buildDocumentLink(
+                          context,
+                          'Driving License',
+                          customerData['drivingLicenseUrl'],
+                        ),
+                        _buildDocumentLink(
+                          context,
+                          'Malaysian ID',
+                          customerData['malaysianIdUrl'],
+                        ),
+                      ],
+                    ),
                   ),
-                  SizedBox(height: 10),
-                  Text('Name: ${customerData['name']}'),
-                  Text('IC Number: ${customerData['icNumber']}'),
-                  Text('Address: ${customerData['address']}'),
-                  Text('Age: ${customerData['age']}'),
-                  Text('Phone Number: ${customerData['phoneNumber']}'),
-                  Text('Email: ${customerData['email']}'),
-                  SizedBox(height: 20),
-                  Text(
-                    'Documents',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 10),
-                  customerData['drivingLicenseUrl'] != null
-                      ? GestureDetector(
-                          onTap: () => launch(customerData['drivingLicenseUrl']),
-                          child: Text(
-                            'View Driving License',
-                            style: TextStyle(color: Colors.blue),
-                          ),
-                        )
-                      : Text('Driving License not available'),
-                  customerData['malaysianIdUrl'] != null
-                      ? GestureDetector(
-                          onTap: () => launch(customerData['malaysianIdUrl']),
-                          child: Text(
-                            'View Malaysian ID',
-                            style: TextStyle(color: Colors.blue),
-                          ),
-                        )
-                      : Text('Malaysian ID not available'),
-                ],
+                ),
               ),
             );
           }
         },
       ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        children: [
+          Text(
+            '$label ',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          Expanded(
+            child: Text(value),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDocumentLink(BuildContext context, String label, String? url) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: url != null
+          ? GestureDetector(
+              onTap: () => launch(url),
+              child: Text(
+                'View $label',
+                style: TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
+              ),
+            )
+          : Text('$label not available'),
     );
   }
 }
@@ -515,7 +561,7 @@ class VerifyCustomerAccountsPage extends StatelessWidget {
                         await _deleteAccount(customerId);
                         Navigator.of(context).pop();
                       },
-                      child: Text('Delete'),
+                      child: Text('Reject'),
                     ),
                   ],
                 ),
