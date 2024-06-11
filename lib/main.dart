@@ -4,9 +4,15 @@ import 'package:fyp_psm/authentication/main_page.dart';
 import 'package:fyp_psm/pages/session_state.dart';
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Request location permissions
+  await Permission.locationWhenInUse.request();
+
+  // Initialize Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );

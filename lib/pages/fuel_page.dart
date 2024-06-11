@@ -47,6 +47,11 @@ class _FuelPageState extends State<FuelPage> {
         // Store the image URL and other details in Firestore
         await _storeDataInFirestore(imageUrl);
 
+         // Stop the tracking
+        await FirebaseFirestore.instance.collection('booking').doc(widget.bookingId).update({
+          'isTrackingEnabled': false,
+        });
+
         // Reset the image state
         setState(() {
           _image = null;

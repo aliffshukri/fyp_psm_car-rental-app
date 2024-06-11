@@ -8,6 +8,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:fyp_psm/pages/session_state.dart';
 import 'dart:async';
+import 'package:geolocator/geolocator.dart';
 
 class SessionPage extends StatefulWidget {
   @override
@@ -20,11 +21,19 @@ class _SessionPageState extends State<SessionPage> {
   DateTime? nearestBookingStart;
   String bookingId = "";
   final user = FirebaseAuth.instance.currentUser!;
+  bool _isTrackingEnabled = true;
+  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
     fetchNearestUpcomingBooking();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
   void fetchNearestUpcomingBooking() async {
@@ -43,12 +52,28 @@ class _SessionPageState extends State<SessionPage> {
         bookingId = booking.id;
         isPageLocked = nearestBookingStart!.isAfter(DateTime.now());
       });
+      _startTracking();
     } else {
       setState(() {
         nearestBookingStart = null;
         isPageLocked = true; // No upcoming bookings
       });
     }
+  }
+
+  void _startTracking() {
+    _timer = Timer.periodic(Duration(seconds: 1), (timer) async {
+      DocumentSnapshot bookingDoc = await FirebaseFirestore.instance.collection('booking').doc(bookingId).get();
+      if (bookingDoc.exists && bookingDoc['isTrackingEnabled'] == true) {
+        Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+        await FirebaseFirestore.instance.collection('booking').doc(bookingId).update({
+          'currentLatitude': position.latitude,
+          'currentLongitude': position.longitude,
+        });
+      } else {
+        timer.cancel(); // Stop the timer if tracking is disabled
+      }
+    });
   }
 
   Future<void> updateBookingStatus(String bookingId, String status) async {
@@ -178,9 +203,12 @@ class _SessionPageState extends State<SessionPage> {
           content: Text("It is advised to refuel the car to avoid penalty. Do you really wish to proceed to the Fuel Update Form?"),
           actions: [
             TextButton(
-              onPressed: () {
+              onPressed: () async {
                 sessionState.endSession();
                 Navigator.of(context).pop();
+                await FirebaseFirestore.instance.collection('booking').doc(bookingId).update({
+                  'isTrackingEnabled': false,
+                });
                 navigateToFuelPage();
               },
               child: Text('Yes'),

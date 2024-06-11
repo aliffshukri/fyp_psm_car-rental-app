@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:math';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -12,6 +10,8 @@ import 'package:fyp_psm/staff/car_rental_page.dart';
 import 'package:fyp_psm/staff/cust_booking_page.dart';
 import 'package:fyp_psm/staff/report_page.dart';
 import 'package:fyp_psm/staff/custdetails_page.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class TrackPage extends StatefulWidget {
   const TrackPage({super.key});
@@ -25,7 +25,7 @@ class _TrackPageState extends State<TrackPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: false, // Remove the back arrow
+        automaticallyImplyLeading: false,
         centerTitle: true,
         title: Text(
           "Rental Car Management",
@@ -38,7 +38,6 @@ class _TrackPageState extends State<TrackPage> {
           IconButton(
             onPressed: () async {
               await FirebaseAuth.instance.signOut();
-              // Navigate to the login page
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (context) => LoginPage(showRegisterPage: () {})),
@@ -108,37 +107,31 @@ class _TrackPageState extends State<TrackPage> {
           ),
         ],
         selectedItemColor: Colors.black,
-        unselectedItemColor: Colors.grey, // Set unselected item color
-        currentIndex: 3, // Set the default selected index to "Verification"
+        unselectedItemColor: Colors.grey,
+        currentIndex: 3,
         onTap: (int index) {
-          // Handle bottom navigation item taps here
           switch (index) {
             case 0:
-              // Navigate to verification page
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (context) => CustDetailsPage()),
               );
               break;
             case 1:
-              // Navigate to car details page (Main page)
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (context) => StaffCarRentalPage()),
               );
               break;
             case 2:
-              // Navigate to customer booking page
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (context) => CustomerBookingPage()),
               );
               break;
             case 3:
-              // Navigate to map page
               break;
             case 4:
-
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (context) => ReportPage()),
@@ -164,7 +157,7 @@ class BookingCard extends StatelessWidget {
       builder: (context) {
         return Container(
           height: MediaQuery.of(context).size.height * 0.9,
-          child: LiveTrackPage(),
+          child: LiveTrackPage(bookingId: booking.id),
         );
       },
     );
@@ -214,48 +207,57 @@ class BookingCard extends StatelessWidget {
 }
 
 class LiveTrackPage extends StatefulWidget {
-  const LiveTrackPage({super.key});
+  final String bookingId;
+
+  const LiveTrackPage({Key? key, required this.bookingId}) : super(key: key);
 
   @override
   State<LiveTrackPage> createState() => _LiveTrackPageState();
 }
 
 class _LiveTrackPageState extends State<LiveTrackPage> {
-  late Timer _timer;
-  LatLng _currentPosition = LatLng(1.851751, 103.069315); // Initial position: House 115
+  LatLng? _currentPosition;
   final MapController _mapController = MapController();
+  String? _latitude;
+  String? _longitude;
 
   @override
   void initState() {
     super.initState();
-    _startMockTracking();
+    _fetchInitialLocation();
   }
 
-  @override
-  void dispose() {
-    _timer.cancel();
-    super.dispose();
-  }
+  Future<void> _fetchInitialLocation() async {
+    var status = await Permission.locationWhenInUse.request();
+    if (status.isGranted) {
+      FirebaseFirestore.instance
+          .collection('booking')
+          .doc(widget.bookingId)
+          .snapshots()
+          .listen((bookingDoc) {
+        if (bookingDoc.exists) {
+          double initialLatitude = bookingDoc['currentLatitude'];
+          double initialLongitude = bookingDoc['currentLongitude'];
 
-  void _startMockTracking() {
-    Random random = Random();
-    _timer = Timer.periodic(Duration(seconds: 2), (timer) {
-      setState(() {
-        _currentPosition = LatLng(
-          _currentPosition.latitude + (random.nextDouble() - 0.5) * 0.001,
-          _currentPosition.longitude + (random.nextDouble() - 0.5) * 0.001,
-        );
+          setState(() {
+            _currentPosition = LatLng(initialLatitude, initialLongitude);
+            _latitude = initialLatitude.toString();
+            _longitude = initialLongitude.toString();
+          });
+
+          _mapController.move(_currentPosition!, 15.0);
+        }
       });
-
-      _mapController.move(_currentPosition, 15.0);
-    });
+    } else if (status.isDenied || status.isPermanentlyDenied) {
+      openAppSettings();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: false, // Remove the back arrow
+        automaticallyImplyLeading: false,
         centerTitle: true,
         title: Text(
           "Live Track",
@@ -267,32 +269,52 @@ class _LiveTrackPageState extends State<LiveTrackPage> {
         elevation: 0,
         backgroundColor: Color.fromARGB(255, 173, 129, 80),
       ),
-      body: FlutterMap(
-        mapController: _mapController,
-        options: MapOptions(
-          center: _currentPosition,
-          zoom: 15.0,
-        ),
-        children: [
-          TileLayer(
-            urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-            subdomains: ['a', 'b', 'c'],
-          ),
-          MarkerLayer(
-            markers: [
-              Marker(
-                width: 80.0,
-                height: 80.0,
-                point: _currentPosition,
-                child: Container(
-                  child: Icon(Icons.location_pin, color: Colors.red, size: 40),
+      body: _currentPosition == null
+          ? Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                Expanded(
+                  child: FlutterMap(
+                    mapController: _mapController,
+                    options: MapOptions(
+                      center: _currentPosition,
+                      zoom: 15.0,
+                    ),
+                    children: [
+                      TileLayer(
+                        urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                        subdomains: ['a', 'b', 'c'],
+                      ),
+                      MarkerLayer(
+                        markers: [
+                          Marker(
+                            width: 80.0,
+                            height: 80.0,
+                            point: _currentPosition!,
+                            child: Icon(Icons.location_pin, color: Colors.red, size: 40),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
-      ),
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Column(
+                    children: [
+                      Text(
+                        "Latitude: ${_latitude ?? 'Loading...'}",
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        "Longitude: ${_longitude ?? 'Loading...'}",
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
     );
   }
 }
-
