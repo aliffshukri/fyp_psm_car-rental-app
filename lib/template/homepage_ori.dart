@@ -1,3 +1,4 @@
+/*
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -226,69 +227,27 @@ class _HomePageState extends State<HomePage> {
                   return CircularProgressIndicator();
                 }
 
-                if (selectedDate == null || selectedTime == null) {
-                  // Show all cars in a locked state
-                  return GridView.builder(
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 16.0,
-                      mainAxisSpacing: 16.0,
-                    ),
-                    padding: EdgeInsets.all(16.0),
-                    itemCount: snapshot.data!.docs.length,
-                    itemBuilder: (BuildContext context, int index) {
-                      var rentalCarData = snapshot.data!.docs[index].data() as Map<String, dynamic>;
-                      return _buildRentalCarItem(
-                        rentalCarData['brand'],
-                        rentalCarData['carModel'],
-                        rentalCarData['carType'],
-                        rentalCarData['numberOfSeats'],
-                        rentalCarData['year'],
-                        rentalCarData['transmissionType'],
-                        rentalCarData['fuelTankCapacity'],
-                        rentalCarData['priceHour'],
-                        snapshot.data!.docs[index].id,
-                        0, // Set availableQty to 0 to indicate locked state
-                      );
-                    },
-                  );
-                }
+                return GridView.builder(
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 16.0,
+                    mainAxisSpacing: 16.0,
+                  ),
+                  padding: EdgeInsets.all(16.0),
+                  itemCount: snapshot.data!.docs.length,
+                  itemBuilder: (BuildContext context, int index) {
+                    var rentalCarData = snapshot.data!.docs[index].data() as Map<String, dynamic>;
 
-                return FutureBuilder(
-                  future: _getAvailableCars(),
-                  builder: (context, AsyncSnapshot<List<DocumentSnapshot>> availableCarsSnapshot) {
-                    if (availableCarsSnapshot.connectionState == ConnectionState.waiting) {
-                      return CircularProgressIndicator();
-                    }
-
-                    if (availableCarsSnapshot.hasError) {
-                      return Text('Error: ${availableCarsSnapshot.error}');
-                    }
-
-                    return GridView.builder(
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 16.0,
-                        mainAxisSpacing: 16.0,
-                      ),
-                      padding: EdgeInsets.all(16.0),
-                      itemCount: availableCarsSnapshot.data!.length,
-                      itemBuilder: (BuildContext context, int index) {
-                        var rentalCarData = availableCarsSnapshot.data![index].data() as Map<String, dynamic>;
-
-                        return _buildRentalCarItem(
-                          rentalCarData['brand'],
-                          rentalCarData['carModel'],
-                          rentalCarData['carType'],
-                          rentalCarData['numberOfSeats'],
-                          rentalCarData['year'],
-                          rentalCarData['transmissionType'],
-                          rentalCarData['fuelTankCapacity'],
-                          rentalCarData['priceHour'],
-                          availableCarsSnapshot.data![index].id,
-                          rentalCarData['availableQty'],
-                        );
-                      },
+                    return _buildRentalCarItem(
+                      rentalCarData['brand'],
+                      rentalCarData['carModel'],
+                      rentalCarData['carType'],
+                      rentalCarData['numberOfSeats'],
+                      rentalCarData['year'],
+                      rentalCarData['transmissionType'],
+                      rentalCarData['fuelTankCapacity'],
+                      rentalCarData['priceHour'],
+                      snapshot.data!.docs[index].id,
                     );
                   },
                 );
@@ -341,7 +300,7 @@ class _HomePageState extends State<HomePage> {
     if (selectedDate.year == now.year &&
         selectedDate.month == now.month &&
         selectedDate.day == now.day) {
-      List<String> filteredOptions = timeOptions.where((timeOption) {
+      return timeOptions.where((timeOption) {
         DateTime timeOptionDateTime = DateFormat('h:mm a').parse(timeOption);
         DateTime fullTimeOptionDateTime = DateTime(
           selectedDate.year,
@@ -352,81 +311,9 @@ class _HomePageState extends State<HomePage> {
         );
         return fullTimeOptionDateTime.isAfter(now);
       }).toList();
-      if (filteredOptions.isEmpty) {
-        _showTimeUnavailablePopup();
-      }
-      return filteredOptions;
     } else {
       return timeOptions;
     }
-  }
-
-  void _showTimeUnavailablePopup() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Time Unavailable'),
-        content: Text('The last start rental time has passed. Please select another date.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<List<DocumentSnapshot>> _getAvailableCars() async {
-    if (selectedDate == null || selectedTime == null) {
-      return [];
-    }
-
-    DateTime selectedDateTime = DateFormat('yyyy-MM-dd hh:mm a').parse("${DateFormat('yyyy-MM-dd').format(selectedDate!)} $selectedTime");
-
-    QuerySnapshot bookingSnapshot = await FirebaseFirestore.instance.collection('booking').get();
-    List<String> unavailablePlateNumbers = [];
-
-    for (var booking in bookingSnapshot.docs) {
-      DateTime startDateTime = booking['startDateTime'].toDate();
-      DateTime endDateTime = booking['endDateTime'].toDate();
-      String plateNumber = booking['plateNumber'];
-      String status = booking['status'];
-
-      if (!(selectedDateTime.isBefore(startDateTime) || selectedDateTime.isAfter(endDateTime)) && status == 'Upcoming') {
-        unavailablePlateNumbers.add(plateNumber);
-      }
-
-      // If the status is not 'Upcoming' and endDateTime is due, the car is available again
-      if (status != 'Upcoming' && endDateTime.isBefore(DateTime.now())) {
-        var carDoc = await FirebaseFirestore.instance.collection('rentalCar').doc(booking['carId']).get();
-        int availableQty = carDoc['availableQty'];
-        await FirebaseFirestore.instance.collection('rentalCar').doc(booking['carId']).update({
-          'availableQty': availableQty + 1
-        });
-      }
-    }
-
-    QuerySnapshot rentalCarSnapshot = await FirebaseFirestore.instance.collection('rentalCar').get();
-    List<DocumentSnapshot> availableCars = [];
-
-    for (var rentalCar in rentalCarSnapshot.docs) {
-      var plateNumbersSnapshot = await rentalCar.reference.collection('plateNumbers').get();
-      int availableQty = plateNumbersSnapshot.docs.length;
-
-      for (var plateNumberDoc in plateNumbersSnapshot.docs) {
-        if (unavailablePlateNumbers.contains(plateNumberDoc['plateNumber'])) {
-          availableQty--;
-        }
-      }
-
-      if (availableQty > 0) {
-        rentalCar.reference.update({'availableQty': availableQty});
-        availableCars.add(rentalCar);
-      }
-    }
-
-    return availableCars;
   }
 
   Widget _buildRentalCarItem(
@@ -439,7 +326,6 @@ class _HomePageState extends State<HomePage> {
     String fuelTankCapacity,
     double priceHour,
     String carId,
-    int availableQty,
   ) {
     Map<String, dynamic> rentalCarData = {
       'brand': brand,
@@ -451,7 +337,6 @@ class _HomePageState extends State<HomePage> {
       'numSeats': numberOfSeats,
       'priceHour': priceHour,
       'carId': carId,
-      'availableQty': availableQty,
     };
 
     return Card(
@@ -504,10 +389,6 @@ class _HomePageState extends State<HomePage> {
               'Seats: $numberOfSeats',
               style: TextStyle(fontSize: 16.0),
             ),
-            Text(
-              'Available: $availableQty',
-              style: TextStyle(fontSize: 16.0, color: availableQty > 0 ? Colors.green : Colors.red),
-            ),
           ],
         ),
       ),
@@ -545,4 +426,4 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-}
+}*/

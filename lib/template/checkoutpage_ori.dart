@@ -50,101 +50,64 @@ class _CheckoutPageState extends State<CheckoutPage> {
     }
   }
 
-  Future<bool> _checkForOverlappingBookings() async {
-    final bookingSnapshot = await FirebaseFirestore.instance
-        .collection('booking')
-        .where('plateNumber', isEqualTo: widget.carPlate)
-        .get();
-    
-    for (var booking in bookingSnapshot.docs) {
-      DateTime bookingStart = booking['startDateTime'].toDate();
-      DateTime bookingEnd = booking['endDateTime'].toDate();
-      
-      if (widget.startDateTime.isBefore(bookingEnd) && widget.endDateTime.isAfter(bookingStart)) {
-        return true; // Overlapping booking found
-      }
-    }
-    return false;
-  }
-
   Future<void> _uploadReceiptAndConfirmBooking() async {
-    if (_receiptFile == null) return;
+  if (_receiptFile == null) return;
 
-    try {
-      // Check for overlapping bookings
-      bool hasOverlappingBooking = await _checkForOverlappingBookings();
-      if (hasOverlappingBooking) {
-        // Show a popup to inform the customer
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text('Booking Conflict'),
-            content: Text('The selected car is already booked for the chosen period. Please select a different period or car.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text('OK'),
-              ),
-            ],
-          ),
-        );
-        return;
-      }
+  try {
+    // Upload receipt file to Firebase Storage
+    String fileName = 'receipts/${FirebaseAuth.instance.currentUser!.uid}/${DateTime.now().millisecondsSinceEpoch}.pdf';
+    Reference storageRef = FirebaseStorage.instance.ref().child(fileName);
+    UploadTask uploadTask = storageRef.putFile(_receiptFile!);
+    TaskSnapshot taskSnapshot = await uploadTask;
+    String receiptUrl = await taskSnapshot.ref.getDownloadURL();
 
-      // Upload receipt file to Firebase Storage
-      String fileName = 'receipts/${FirebaseAuth.instance.currentUser!.uid}/${DateTime.now().millisecondsSinceEpoch}.pdf';
-      Reference storageRef = FirebaseStorage.instance.ref().child(fileName);
-      UploadTask uploadTask = storageRef.putFile(_receiptFile!);
-      TaskSnapshot taskSnapshot = await uploadTask;
-      String receiptUrl = await taskSnapshot.ref.getDownloadURL();
+    // Fetch current user information
+    User? currentUser = FirebaseAuth.instance.currentUser;
+    String? displayName = currentUser?.displayName;
+    String? phoneNumber = currentUser?.phoneNumber;
+    String? email = currentUser?.email;
 
-      // Fetch current user information
-      User? currentUser = FirebaseAuth.instance.currentUser;
-      String? displayName = currentUser?.displayName;
-      String? phoneNumber = currentUser?.phoneNumber;
-      String? email = currentUser?.email;
-
-      // Fetch user details from Firestore if not available in Auth
-      if (displayName == null || phoneNumber == null) {
-        DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('customer').doc(currentUser!.uid).get();
-        displayName = userDoc['name'] ?? 'No name';
-        phoneNumber = userDoc['phoneNumber'] ?? 'No phone number';
-      }
-
-      // Get the current date and time for the booking
-      DateTime bookingDateTime = DateTime.now();
-
-      // Add 'Upcoming' status
-      String status = 'Upcoming';
-
-      // Create booking in Firestore
-      await FirebaseFirestore.instance.collection('booking').add({
-        'startDateTime': widget.startDateTime,
-        'endDateTime': widget.endDateTime,
-        'rentalPeriodHours': widget.rentalPeriodHours,
-        'rentalPeriodDays': widget.rentalPeriodDays,
-        'totalPrice': widget.totalPrice,
-        'paymentProof': receiptUrl,
-        'plateNumber': widget.carPlate,
-        'brand': widget.carBrand,
-        'carModel': widget.carModel,
-        'name': displayName,
-        'phoneNumber': phoneNumber,
-        'email': email,
-        'bookingDateTime': bookingDateTime,
-        'status': status, // Add status field
-      });
-
-      // Navigate to MyBookingPage
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => MyBookingPage()),
-      );
-    } catch (e) {
-      // Handle errors
-      print('Error uploading receipt and confirming booking: $e');
+    // Fetch user details from Firestore if not available in Auth
+    if (displayName == null || phoneNumber == null) {
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('customer').doc(currentUser!.uid).get();
+      displayName = userDoc['name'] ?? 'No name';
+      phoneNumber = userDoc['phoneNumber'] ?? 'No phone number';
     }
+
+    // Get the current date and time for the booking
+    DateTime bookingDateTime = DateTime.now();
+
+    // Add 'Upcoming' status
+    String status = 'Upcoming';
+
+    // Create booking in Firestore
+    await FirebaseFirestore.instance.collection('booking').add({
+      'startDateTime': widget.startDateTime,
+      'endDateTime': widget.endDateTime,
+      'rentalPeriodHours': widget.rentalPeriodHours,
+      'rentalPeriodDays': widget.rentalPeriodDays,
+      'totalPrice': widget.totalPrice,
+      'paymentProof': receiptUrl,
+      'plateNumber': widget.carPlate,
+      'brand': widget.carBrand,
+      'carModel': widget.carModel,
+      'name': displayName,
+      'phoneNumber': phoneNumber,
+      'email': email,
+      'bookingDateTime': bookingDateTime,
+      'status': status, // Add status field
+    });
+
+    // Navigate to MyBookingPage
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => MyBookingPage()),
+    );
+  } catch (e) {
+    // Handle errors
+    print('Error uploading receipt and confirming booking: $e');
   }
+}
 
   @override
   Widget build(BuildContext context) {

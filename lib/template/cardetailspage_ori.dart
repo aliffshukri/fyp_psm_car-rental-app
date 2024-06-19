@@ -1,3 +1,4 @@
+/*
 import 'package:flutter/material.dart';
 import 'package:numberpicker/numberpicker.dart';
 import 'checkout_page.dart';
@@ -47,34 +48,15 @@ class _CarDetailsPageState extends State<CarDetailsPage> {
     _calculateTotalPrice();
   }
 
-  Future<List<String>> _fetchAvailablePlateNumbers() async {
+  Future<String> _fetchRandomPlateNumber() async {
     final plateNumbersSnapshot = await FirebaseFirestore.instance
         .collection('rentalCar')
         .doc(widget.carId)
         .collection('plateNumbers')
         .get();
     final plateNumbers = plateNumbersSnapshot.docs.map((doc) => doc['plateNumber'] as String).toList();
-    return plateNumbers;
-  }
-
-  Future<List<String>> _getUnavailablePlateNumbers(DateTime startDateTime, DateTime endDateTime) async {
-    final bookingSnapshot = await FirebaseFirestore.instance.collection('booking').get();
-    List<String> unavailablePlateNumbers = [];
-
-    for (var booking in bookingSnapshot.docs) {
-      DateTime bookingStart = booking['startDateTime'].toDate();
-      DateTime bookingEnd = booking['endDateTime'].toDate();
-
-      // Include 1-hour buffer before and after
-      DateTime adjustedBookingStart = bookingStart.subtract(Duration(hours: 1));
-      DateTime adjustedBookingEnd = bookingEnd.add(Duration(hours: 1));
-
-      if (startDateTime.isBefore(adjustedBookingEnd) && endDateTime.isAfter(adjustedBookingStart)) {
-        unavailablePlateNumbers.add(booking['plateNumber']);
-      }
-    }
-
-    return unavailablePlateNumbers;
+    final random = Random();
+    return plateNumbers[random.nextInt(plateNumbers.length)];
   }
 
   void _calculateTotalPrice() {
@@ -137,67 +119,6 @@ class _CarDetailsPageState extends State<CarDetailsPage> {
       return startDateTime.add(Duration(hours: rentalPeriod));
     } else {
       return startDateTime.add(Duration(days: rentalPeriod));
-    }
-  }
-
-  Future<void> _handleCheckout() async {
-    DateTime startDateTime = widget.selectedDateTime;
-    DateTime endDateTime = calculateEndDateTime();
-
-    List<String> availablePlateNumbers = await _fetchAvailablePlateNumbers();
-    List<String> unavailablePlateNumbers = await _getUnavailablePlateNumbers(startDateTime, endDateTime);
-
-    List<String> availablePlateNumbersFiltered = availablePlateNumbers
-        .where((plateNumber) => !unavailablePlateNumbers.contains(plateNumber))
-        .toList();
-
-    if (availablePlateNumbersFiltered.isNotEmpty) {
-      final random = Random();
-      String plateNumber = availablePlateNumbersFiltered[random.nextInt(availablePlateNumbersFiltered.length)];
-
-      // Navigate to CheckoutPage with the fetched plate number
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => CheckoutPage(
-            startDateTime: startDateTime,
-            endDateTime: endDateTime,
-            rentalPeriodDescription: rentalType == 'Hours' ? '$rentalPeriod hours' : '$rentalPeriod days',
-            rentalPeriodHours: rentalType == 'Hours' ? rentalPeriod : 0,
-            rentalPeriodDays: rentalType == 'Days' ? rentalPeriod : 0,
-            carBrand: widget.brand ?? '',
-            carModel: widget.modelName ?? '',
-            carPlate: plateNumber, // Pass the fetched plate number
-            totalPrice: totalPrice,
-          ),
-        ),
-      );
-    } else {
-      // Show a popup to advise the customer to pick another rental period with suggestions
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text('No Available Cars'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Please select a different rental period to avoid double booking.'),
-              SizedBox(height: 10),
-              Text('Suggestions:'),
-              Text('- Avoid booking start or end times that overlap with another booking.'),
-              Text('- Ensure at least a 1-hour buffer between bookings for maintenance.'),
-              Text('- Try different start or end times within the same day.'),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('OK'),
-            ),
-          ],
-        ),
-      );
     }
   }
 
@@ -328,7 +249,39 @@ class _CarDetailsPageState extends State<CarDetailsPage> {
                   const SizedBox(height: 20),
                   Center(
                     child: ElevatedButton(
-                      onPressed: isCheckoutEnabled ? _handleCheckout : null,
+                      onPressed: isCheckoutEnabled
+                          ? () async {
+                              // Fetch the random plate number
+                              String plateNumber = await _fetchRandomPlateNumber();
+
+                              // Set rental period hours and days based on the selected rental type
+                              int rentalPeriodHours = rentalType == 'Hours' ? rentalPeriod : 0;
+                              int rentalPeriodDays = rentalType == 'Days' ? rentalPeriod : 0;
+
+                              // Create rental period description
+                              String rentalPeriodDescription = rentalType == 'Hours'
+                                  ? '$rentalPeriod hours'
+                                  : '$rentalPeriod days';
+
+                              // Navigate to CheckoutPage with the fetched plate number
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => CheckoutPage(
+                                    startDateTime: widget.selectedDateTime,
+                                    endDateTime: calculateEndDateTime(),
+                                    rentalPeriodDescription: rentalPeriodDescription,
+                                    rentalPeriodHours: rentalType == 'Hours' ? rentalPeriod : 0,
+                                    rentalPeriodDays: rentalType == 'Days' ? rentalPeriod : 0,
+                                    carBrand: widget.brand ?? '',
+                                    carModel: widget.modelName ?? '',
+                                    carPlate: plateNumber, // Pass the fetched plate number
+                                    totalPrice: totalPrice,
+                                  ),
+                                ),
+                              );
+                            }
+                          : null,
                       child: const Text(
                         'Checkout',
                         style: TextStyle(color: Colors.black), // Keep font color
@@ -382,3 +335,4 @@ class CarDetailItem extends StatelessWidget {
     );
   }
 }
+*/

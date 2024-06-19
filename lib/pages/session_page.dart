@@ -60,6 +60,13 @@ class _SessionPageState extends State<SessionPage> {
       });
     }
   }
+  
+  Future<void> updateBookingStatus(String bookingId, String status) async {
+    await FirebaseFirestore.instance
+        .collection('booking')
+        .doc(bookingId)
+        .update({'status': status});
+  }
 
   void _startTracking() {
     _timer = Timer.periodic(Duration(seconds: 1), (timer) async {
@@ -76,12 +83,7 @@ class _SessionPageState extends State<SessionPage> {
     });
   }
 
-  Future<void> updateBookingStatus(String bookingId, String status) async {
-    await FirebaseFirestore.instance
-        .collection('booking')
-        .doc(bookingId)
-        .update({'status': status});
-  }
+  
 
   @override
   Widget build(BuildContext context) {

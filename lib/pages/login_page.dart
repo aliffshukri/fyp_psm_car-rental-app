@@ -220,12 +220,12 @@ class _LoginPageState extends State<LoginPage> {
                 SizedBox(height: 40),
                 Text(
                   'Welcome to Kereta Sewa Jimat App',
-                  style: GoogleFonts.bebasNeue(fontSize: 34),
+                  style: GoogleFonts.bebasNeue(fontSize: 28),
                 ),
                 SizedBox(height: 0),
                 Text(
                   "Please enter your email and password",
-                  style: TextStyle(fontSize: 20),
+                  style: TextStyle(fontSize: 18),
                 ),
                 SizedBox(height: 20),
                 Padding(
