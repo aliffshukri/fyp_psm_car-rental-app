@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/services.dart';
 
 class RegisterPage extends StatefulWidget {
   @override
@@ -39,8 +40,19 @@ class _RegisterPageState extends State<RegisterPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Color.fromARGB(255, 180, 192, 86),
       appBar: AppBar(
-        title: Text('Register'),
+        automaticallyImplyLeading: false,
+        centerTitle: true,
+        title: Text(
+          "Register",
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        backgroundColor: Color(0xFFB38E58),
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(16.0),
@@ -48,92 +60,46 @@ class _RegisterPageState extends State<RegisterPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Name
-            TextFormField(
-              controller: _nameController,
-              decoration: InputDecoration(labelText: 'Name'),
-            ),
+            _buildTextField('Name', _nameController),
             SizedBox(height: 16.0),
 
             // IC Number
-            TextFormField(
-              controller: _icNumberController,
-              decoration: InputDecoration(labelText: 'IC Number'),
-            ),
+            _buildTextField('IC Number', _icNumberController, inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(12),
+              _ICNumberFormatter(),
+            ]),
             SizedBox(height: 16.0),
 
             // Address
-            TextFormField(
-              controller: _addressController,
-              decoration: InputDecoration(labelText: 'Address'),
-            ),
+            _buildTextField('Address', _addressController),
             SizedBox(height: 16.0),
 
             // Phone Number
-            TextFormField(
-              controller: _phoneNumberController,
-              decoration: InputDecoration(labelText: 'Phone Number'),
-            ),
+            _buildTextField('Phone Number', _phoneNumberController, inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              _PhoneNumberFormatter(),
+            ]),
             SizedBox(height: 16.0),
 
             // Age
-            TextFormField(
-              controller: _ageController,
-              decoration: InputDecoration(labelText: 'Age'),
-              keyboardType: TextInputType.number,
-            ),
+            _buildTextField('Age', _ageController, keyboardType: TextInputType.number),
             SizedBox(height: 16.0),
 
             // Email
-            TextFormField(
-              controller: _emailController,
-              decoration: InputDecoration(labelText: 'Email (Used for login)'),
-            ),
+            _buildTextField('Email (Used for login)', _emailController),
             SizedBox(height: 16.0),
 
             // Create Password
-            TextFormField(
-              controller: _passwordController,
-              obscureText: true,
-              decoration: InputDecoration(labelText: 'Create Password (Minimum 6 characters)'),
-            ),
+            _buildTextField('Create Password (Minimum 6 characters)', _passwordController, obscureText: true),
             SizedBox(height: 16.0),
 
             // Driving License File
-            GestureDetector(
-              onTap: () => _pickFile(isUploadFile: true),
-              child: Container(
-                color: Colors.grey[200],
-                padding: EdgeInsets.all(16.0),
-                child: Column(
-                  children: [
-                    Icon(Icons.attach_file, size: 40),
-                    SizedBox(height: 8.0),
-                    Text('Upload Driving License File'),
-                    if (_drivingLicenseFilePath != null)
-                      Text('Selected file: $_drivingLicenseFilePath'),
-                  ],
-                ),
-              ),
-            ),
+            _buildFilePicker('Upload Driving License File', _drivingLicenseFilePath, isUploadFile: true),
             SizedBox(height: 16.0),
 
             // Malaysian ID File
-            GestureDetector(
-              onTap: () => _pickFile(isUploadFile: false),
-              child: Container(
-                color: Colors.grey[200],
-                padding: EdgeInsets.all(16.0),
-                child: Column(
-                  children: [
-                    Icon(Icons.attach_file, size: 40),
-                    SizedBox(height: 8.0),
-                    Text('Upload Malaysian ID File'),
-                    if (_malaysianIdFilePath != null)
-                      Text('Selected file: $_malaysianIdFilePath'),
-                  ],
-                ),
-              ),
-            ),
+            _buildFilePicker('Upload Malaysian ID File', _malaysianIdFilePath, isUploadFile: false),
             SizedBox(height: 16.0),
 
             // Term and Condition Checkbox
@@ -149,7 +115,6 @@ class _RegisterPageState extends State<RegisterPage> {
                 ),
                 GestureDetector(
                   onTap: () {
-                    // Redirect to TermsPage when "Term and Condition" is clicked
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => TermsPage()),
@@ -158,7 +123,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   child: Text(
                     'Term and Condition',
                     style: TextStyle(
-                      color: Colors.blue,
+                      color: Color.fromARGB(255, 16, 93, 156),
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -170,7 +135,13 @@ class _RegisterPageState extends State<RegisterPage> {
             // Submit button
             ElevatedButton(
               onPressed: _isSubmitButtonEnabled() ? () => _submitForm() : null,
-              child: Text('Submit'),
+              style: ElevatedButton.styleFrom(
+                primary: Color(0xFFB38E58),
+              ),
+              child: Text(
+                'Submit',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
             SizedBox(height: 16.0),
 
@@ -182,6 +153,9 @@ class _RegisterPageState extends State<RegisterPage> {
                   MaterialPageRoute(builder: (context) => LoginPage(showRegisterPage: () {})),
                 );
               },
+              style: ElevatedButton.styleFrom(
+                primary: Colors.white,
+              ),
               child: Text('Cancel'),
             ),
           ],
@@ -190,19 +164,54 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
+  Widget _buildTextField(String labelText, TextEditingController controller, {bool obscureText = false, TextInputType keyboardType = TextInputType.text, List<TextInputFormatter>? inputFormatters}) {
+    return TextFormField(
+      controller: controller,
+      obscureText: obscureText,
+      keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
+      decoration: InputDecoration(
+        labelText: labelText,
+        filled: true,
+        fillColor: Color(0xFFEFEFEF),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10.0),
+          borderSide: BorderSide.none,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilePicker(String labelText, String? filePath, {required bool isUploadFile}) {
+    return GestureDetector(
+      onTap: () => _pickFile(isUploadFile: isUploadFile),
+      child: Container(
+        color: Colors.grey[200],
+        padding: EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            Icon(Icons.attach_file, size: 40),
+            SizedBox(height: 8.0),
+            Text(labelText),
+            if (filePath != null)
+              Text('Selected file: $filePath'),
+          ],
+        ),
+      ),
+    );
+  }
+
   bool _isSubmitButtonEnabled() {
-
-  return _termsChecked &&
-      _nameController.text.isNotEmpty &&
-      _icNumberController.text.isNotEmpty &&
-      _addressController.text.isNotEmpty &&
-      _phoneNumberController.text.isNotEmpty &&
-      _emailController.text.isNotEmpty &&
-      _passwordController.text.isNotEmpty &&
-      _drivingLicenseFilePath != null &&
-      _malaysianIdFilePath != null; 
-}
-
+    return _termsChecked &&
+        _nameController.text.isNotEmpty &&
+        _icNumberController.text.isNotEmpty &&
+        _addressController.text.isNotEmpty &&
+        _phoneNumberController.text.isNotEmpty &&
+        _emailController.text.isNotEmpty &&
+        _passwordController.text.isNotEmpty &&
+        _drivingLicenseFilePath != null &&
+        _malaysianIdFilePath != null;
+  }
 
   void _showPopUpMessage(String title, String message) {
     showDialog(
@@ -238,21 +247,37 @@ class _RegisterPageState extends State<RegisterPage> {
       });
     }
   }
-  
+
   Future<String> _uploadFileToStorage(String userId, String filePath, String fileName) async {
-  try {
-    Reference storageReference = FirebaseStorage.instance.ref().child('files/$userId/$fileName');
-    await storageReference.putFile(File(filePath));
-    String downloadURL = await storageReference.getDownloadURL();
-    return downloadURL; // Return the download URL
-  } catch (e) {
-    throw e; // Rethrow the exception to propagate it up the call stack
+    try {
+      Reference storageReference = FirebaseStorage.instance.ref().child('files/$userId/$fileName');
+      await storageReference.putFile(File(filePath));
+      String downloadURL = await storageReference.getDownloadURL();
+      return downloadURL; // Return the download URL
+    } catch (e) {
+      throw e; // Rethrow the exception to propagate it up the call stack
+    }
   }
-}
 
+  void _submitForm() async {
+  // Validate email format
+  if (!_isValidEmail(_emailController.text.trim())) {
+    _showPopUpMessage('Invalid Email', 'Please enter a valid email address.');
+    return;
+  }
 
+  // Validate IC number format
+  if (!_isValidICNumber(_icNumberController.text)) {
+    _showPopUpMessage('Invalid IC Number', 'Please enter a valid IC number (e.g., XXXXXX-XX-XXXX).');
+    return;
+  }
 
-  Future<void> _submitForm() async {
+  // Validate phone number format
+  if (!_isValidPhoneNumber(_phoneNumberController.text)) {
+    _showPopUpMessage('Invalid Phone Number', 'Please enter a valid phone number (e.g., XXX-XXXXXXXX).');
+    return;
+  }
+
   int? age = int.tryParse(_ageController.text);
   if (age == null || age < 18) {
     _showPopUpMessage('Invalid Age', 'You must be at least 18 years old to register.');
@@ -260,46 +285,137 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   try {
-    // Step 1: Create a user in Firebase Authentication
+    // Step 1: Check if email already exists
+    bool emailExists = await _checkIfEmailExists(_emailController.text.trim());
+    if (emailExists) {
+      _showPopUpMessage('Email Already Exists', 'This email address is already registered. Please use a different email.');
+      return;
+    }
+
+    // Step 2: Create a user in Firebase Authentication
     UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
       email: _emailController.text.trim(),
       password: _passwordController.text.trim(),
     );
 
-    // Step 2: Get the UID of the newly created user
-    String uid = userCredential.user!.uid;
+    // Step 3: Upload files to Firebase Storage (if files are selected)
+    String userId = userCredential.user!.uid;
+    String? drivingLicenseURL;
+    String? malaysianIdURL;
 
-    // Step 3: Upload files to Firebase Storage and get their URLs
-    String drivingLicenseURL = await _uploadFileToStorage(uid, _drivingLicenseFilePath!, 'driving_license.pdf');
-    String malaysianIdURL = await _uploadFileToStorage(uid, _malaysianIdFilePath!, 'malaysian_id.pdf');
+    if (_drivingLicenseFilePath != null) {
+      drivingLicenseURL = await _uploadFileToStorage(userId, _drivingLicenseFilePath!, 'driving_license.pdf');
+    }
+    if (_malaysianIdFilePath != null) {
+      malaysianIdURL = await _uploadFileToStorage(userId, _malaysianIdFilePath!, 'malaysian_id.pdf');
+    }
 
     // Step 4: Save user details to Firestore
-    await FirebaseFirestore.instance.collection('customer').doc(uid).set({
-      'name': _nameController.text,
-      'icNumber': _icNumberController.text,
-      'address': _addressController.text,
-      'phoneNumber': _phoneNumberController.text,
-      'email': _emailController.text,
-      'age': age,  // Save age
-      'drivingLicenseURL': drivingLicenseURL,  // Save driving license URL
-      'malaysianIdURL': malaysianIdURL,  // Save Malaysian ID URL
+    await FirebaseFirestore.instance.collection('customer').doc(userId).set({
+      'name': _nameController.text.trim(),
+      'icNumber': _icNumberController.text.trim().replaceAll('-', ''),
+      'address': _addressController.text.trim(),
+      'phoneNumber': _phoneNumberController.text.trim().replaceAll('-', ''),
+      'age': age,
+      'email': _emailController.text.trim(),
+      'drivingLicenseURL': drivingLicenseURL ?? '',
+      'malaysianIdURL': malaysianIdURL ?? '',
       'isVerified': false,  // Add isVerified field and set to false
       'isDisabled': false,
+      // Add other fields as needed
     });
 
-    // Step 5: Show success pop-up message
-    _showPopUpMessage('Submission Successful', 'Your registration was successful! Please wait for the admin to verify your account.');
+    // Show success message
+    _showPopUpMessage('Registration Successful', 'You have successfully registered.');
 
-    // Step 6: Navigate to the next screen
+     // Navigate to the next screen
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => LoginPage(showRegisterPage: () {  },)),
     );
+
   } catch (e) {
     print("Registration failed: $e");
-    // Step 7: Show failure pop-up message
     _showPopUpMessage('Submission Failed', 'Registration failed. Please try again.');
   }
 }
 
+
+  bool _isValidEmail(String email) {
+    // Basic email format validation using RegExp
+    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
+  }
+
+  bool _isValidICNumber(String icNumber) {
+    // IC number format validation
+    return RegExp(r'^\d{6}-\d{2}-\d{4}$').hasMatch(icNumber);
+  }
+
+  bool _isValidPhoneNumber(String phoneNumber) {
+    // Phone number format validation
+    return RegExp(r'^\d{3}-\d{7,}$').hasMatch(phoneNumber);
+  }
+
+  Future<bool> _checkIfEmailExists(String email) async {
+    // Check if email exists in Firestore
+    QuerySnapshot<Map<String, dynamic>> querySnapshot = await FirebaseFirestore.instance
+        .collection('customer')
+        .where('email', isEqualTo: email)
+        .limit(1)
+        .get();
+
+    return querySnapshot.size > 0;
+  }
+}
+
+class _ICNumberFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    final text = newValue.text;
+    if (text.length > 12) {
+      return oldValue;
+    }
+    final buffer = StringBuffer();
+    int selectionIndex = newValue.selection.end;
+
+    for (int i = 0; i < text.length; i++) {
+      buffer.write(text[i]);
+      if ((i == 5 || i == 7) && text.length > i + 1) {
+        buffer.write('-');
+        if (i < selectionIndex - 1) selectionIndex++;
+      }
+    }
+
+    final String formattedText = buffer.toString();
+    return TextEditingValue(
+      text: formattedText,
+      selection: TextSelection.collapsed(offset: selectionIndex),
+    );
+  }
+}
+
+class _PhoneNumberFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    final text = newValue.text;
+    if (text.length > 11) {
+          return oldValue;
+        }
+    final buffer = StringBuffer();
+    int selectionIndex = newValue.selection.end;
+
+    for (int i = 0; i < text.length; i++) {
+      buffer.write(text[i]);
+      if (i == 2 && text.length > i + 1) {
+        buffer.write('-');
+        if (i < selectionIndex - 1) selectionIndex++;
+      }
+    }
+
+    final String formattedText = buffer.toString();
+    return TextEditingValue(
+      text: formattedText,
+      selection: TextSelection.collapsed(offset: selectionIndex),
+    );
+  }
 }
