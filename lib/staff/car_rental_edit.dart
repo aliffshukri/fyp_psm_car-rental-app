@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'package:firebase_storage/firebase_storage.dart';
 
 class CarRentalEdit extends StatefulWidget {
   final String carId;
@@ -22,6 +25,9 @@ class _CarRentalEditState extends State<CarRentalEdit> {
   late TextEditingController _priceHourController;
   late DocumentReference _carRef;
   bool _isLoading = true;
+  File? _image;
+  final ImagePicker _picker = ImagePicker();
+  String? _imageUrl;
 
   @override
   void initState() {
@@ -56,6 +62,7 @@ class _CarRentalEditState extends State<CarRentalEdit> {
           _transmissionTypeController.text = carData['transmissionType'] ?? '';
           _yearController.text = (carData['year'] ?? '').toString();
           _priceHourController.text = (carData['priceHour'] ?? '').toString();
+          _imageUrl = carData['carImage'] ?? '';
           _isLoading = false;
         });
       } else {
@@ -78,6 +85,11 @@ class _CarRentalEditState extends State<CarRentalEdit> {
         _isLoading = true;
       });
       try {
+        String imageUrl = _imageUrl!;
+        if (_image != null) {
+          imageUrl = await _uploadImageToFirebase(_image!);
+        }
+
         await _carRef.update({
           'brand': _brandController.text,
           'carModel': _carModelController.text,
@@ -86,7 +98,8 @@ class _CarRentalEditState extends State<CarRentalEdit> {
           'numberOfSeats': int.parse(_numberOfSeatsController.text),
           'transmissionType': _transmissionTypeController.text,
           'year': int.parse(_yearController.text),
-          'priceHour': double.parse(_priceHourController.text), 
+          'priceHour': double.parse(_priceHourController.text),
+          'carImage': imageUrl,
         });
         Navigator.of(context).pop();
       } catch (e) {
@@ -96,6 +109,28 @@ class _CarRentalEditState extends State<CarRentalEdit> {
         print('Error updating car data: $e');
       }
     }
+  }
+
+  Future<String> _uploadImageToFirebase(File imageFile) async {
+    try {
+      String fileName = DateTime.now().millisecondsSinceEpoch.toString();
+      Reference storageReference = FirebaseStorage.instance.ref().child('carImages/$fileName');
+      UploadTask uploadTask = storageReference.putFile(imageFile);
+      TaskSnapshot taskSnapshot = await uploadTask.whenComplete(() => {});
+      return await taskSnapshot.ref.getDownloadURL();
+    } catch (e) {
+      print('Error uploading image: $e');
+      return '';
+    }
+  }
+
+  Future<void> _pickImage() async {
+    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+    setState(() {
+      if (pickedFile != null) {
+        _image = File(pickedFile.path);
+      }
+    });
   }
 
   @override
@@ -178,6 +213,20 @@ class _CarRentalEditState extends State<CarRentalEdit> {
                           label: 'Price per Hour',
                           validator: (value) => value!.isEmpty ? 'Please enter the price per hour' : null,
                         ),
+                        ElevatedButton(
+                          onPressed: _pickImage,
+                          child: Text('Pick Car Image'),
+                        ),
+                        if (_image != null)
+                          Image.file(
+                            _image!,
+                            height: 200,
+                          )
+                        else if (_imageUrl != null && _imageUrl!.isNotEmpty)
+                          Image.network(
+                            _imageUrl!,
+                            height: 200,
+                          ),
                         SizedBox(height: 20),
                         ElevatedButton(
                           onPressed: _updateCarData,

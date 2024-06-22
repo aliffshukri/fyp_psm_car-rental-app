@@ -15,6 +15,7 @@ class CarDetailsPage extends StatefulWidget {
   final String? carId;
   final double? priceHour;
   final DateTime selectedDateTime;
+  final String carImage; // Add this line
 
   const CarDetailsPage({
     this.brand,
@@ -27,6 +28,7 @@ class CarDetailsPage extends StatefulWidget {
     this.carId,
     this.priceHour, 
     required this.selectedDateTime,
+    required this.carImage, // Add this line
   });
 
   @override
@@ -236,6 +238,11 @@ class _CarDetailsPageState extends State<CarDetailsPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (widget.carImage.isNotEmpty)
+                    Image.network(
+                      widget.carImage,
+                      height: 200,
+                    ),
                   CarDetailItem(label: 'Brand', value: widget.brand),
                   CarDetailItem(label: 'Model Name', value: widget.modelName),
                   CarDetailItem(label: 'Year', value: widget.year?.toString()),
@@ -243,7 +250,6 @@ class _CarDetailsPageState extends State<CarDetailsPage> {
                   CarDetailItem(label: 'Car Type', value: widget.carType),
                   CarDetailItem(label: 'Fuel Tank Capacity', value: '${widget.fuelTankCapacity} L'),
                   CarDetailItem(label: 'Number of Seats', value: widget.numSeats?.toString()),
-                  CarDetailItem(label: 'Price per Hour', value: 'RM ${widget.priceHour?.toStringAsFixed(2)}'),
 
                   const SizedBox(height: 20),
                   const Text(

@@ -148,7 +148,7 @@ class _SessionPageState extends State<SessionPage> {
                         : null,
                     child: Text("End Session"),
                     style: ElevatedButton.styleFrom(
-                      primary: Colors.black,
+                      primary: Color.fromARGB(255, 255, 255, 255),
                     ),
                   ),
                   SizedBox(height: 20),

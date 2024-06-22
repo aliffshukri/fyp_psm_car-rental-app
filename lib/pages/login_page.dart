@@ -344,7 +344,7 @@ class _LoginPageState extends State<LoginPage> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child:Center(
-                      child: Text('Track your Account Status',
+                      child: Text('Status Page',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 18,

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'package:firebase_storage/firebase_storage.dart';
 
 class CarRentalAdd extends StatefulWidget {
   @override
@@ -19,6 +22,8 @@ class _CarRentalAddState extends State<CarRentalAdd> {
   late TextEditingController _priceHourController;
   bool _isLoading = false;
   List<TextEditingController> _plateNumberControllers = [];
+  File? _image;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -50,40 +55,68 @@ class _CarRentalAddState extends State<CarRentalAdd> {
   }
 
   Future<void> _addCarData() async {
-  if (_formKey.currentState!.validate()) {
-    setState(() {
-      _isLoading = true;
-    });
-    try {
-      DocumentReference carDoc = await FirebaseFirestore.instance.collection('rentalCar').add({
-        'brand': _brandController.text,
-        'carModel': _carModelController.text,
-        'carType': _carTypeController.text,
-        'fuelTankCapacity': _fuelTankCapacityController.text,
-        'numberOfSeats': int.parse(_numberOfSeatsController.text),
-        'transmissionType': _transmissionTypeController.text,
-        'year': int.parse(_yearController.text),
-        'quantity': int.parse(_quantityController.text),
-        'availableQty': int.parse(_quantityController.text),
-        'priceHour': double.parse(_priceHourController.text),
-      });
-
-      for (int i = 0; i < _plateNumberControllers.length; i++) {
-        await carDoc.collection('plateNumbers').add({
-          'plateNumber': _plateNumberControllers[i].text,
-        });
-      }
-
-      Navigator.of(context).pop();
-    } catch (e) {
+    if (_formKey.currentState!.validate()) {
       setState(() {
-        _isLoading = false;
+        _isLoading = true;
       });
-      print('Error adding car data: $e');
+
+      try {
+        String imageUrl = '';
+        if (_image != null) {
+          imageUrl = await _uploadImageToFirebase(_image!);
+        }
+
+        DocumentReference carDoc = await FirebaseFirestore.instance.collection('rentalCar').add({
+          'brand': _brandController.text,
+          'carModel': _carModelController.text,
+          'carType': _carTypeController.text,
+          'fuelTankCapacity': _fuelTankCapacityController.text,
+          'numberOfSeats': int.parse(_numberOfSeatsController.text),
+          'transmissionType': _transmissionTypeController.text,
+          'year': int.parse(_yearController.text),
+          'quantity': int.parse(_quantityController.text),
+          'availableQty': int.parse(_quantityController.text), // Added availableQty
+          'priceHour': double.parse(_priceHourController.text),
+          'carImage': imageUrl,
+        });
+
+        for (int i = 0; i < _plateNumberControllers.length; i++) {
+          await carDoc.collection('plateNumbers').add({
+            'plateNumber': _plateNumberControllers[i].text,
+          });
+        }
+
+        Navigator.of(context).pop();
+      } catch (e) {
+        setState(() {
+          _isLoading = false;
+        });
+        print('Error adding car data: $e');
+      }
     }
   }
-}
 
+  Future<String> _uploadImageToFirebase(File imageFile) async {
+    try {
+      String fileName = DateTime.now().millisecondsSinceEpoch.toString();
+      Reference storageReference = FirebaseStorage.instance.ref().child('carImages/$fileName');
+      UploadTask uploadTask = storageReference.putFile(imageFile);
+      TaskSnapshot taskSnapshot = await uploadTask.whenComplete(() => {});
+      return await taskSnapshot.ref.getDownloadURL();
+    } catch (e) {
+      print('Error uploading image: $e');
+      return '';
+    }
+  }
+
+  Future<void> _pickImage() async {
+    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+    setState(() {
+      if (pickedFile != null) {
+        _image = File(pickedFile.path);
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -172,7 +205,15 @@ class _CarRentalAddState extends State<CarRentalAdd> {
                           label: 'Quantity',
                           validator: (value) => value!.isEmpty ? 'Please enter the quantity' : null,
                         ),
-                        
+                        ElevatedButton(
+                          onPressed: _pickImage,
+                          child: Text('Pick Car Image'),
+                        ),
+                        if (_image != null)
+                          Image.file(
+                            _image!,
+                            height: 200,
+                          ),
                         if (_plateNumberControllers.isNotEmpty) ..._buildPlateNumberFields(),
                         SizedBox(height: 20),
                         ElevatedButton(

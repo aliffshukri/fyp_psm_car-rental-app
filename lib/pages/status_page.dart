@@ -29,18 +29,22 @@ class _TrackStatusState extends State<TrackStatus> {
 
     try {
       String email = _emailController.text.trim();
-      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+      if (email.isEmpty) {
+        _showDialog("Email Required", "Please enter your email.");
+        setState(() {
+          _statusMessage = "Enter your email to track your account status.";
+        });
+        return;
+      }
+
+      // Check customer collection
+      QuerySnapshot customerQuerySnapshot = await FirebaseFirestore.instance
           .collection('customer')
           .where('email', isEqualTo: email)
           .get();
 
-      if (querySnapshot.docs.isEmpty) {
-        setState(() {
-          _statusMessage = "Your account has not been verified.";
-          _accountDeleted = true;
-        });
-      } else {
-        DocumentSnapshot docSnapshot = querySnapshot.docs.first;
+      if (customerQuerySnapshot.docs.isNotEmpty) {
+        DocumentSnapshot docSnapshot = customerQuerySnapshot.docs.first;
         bool isVerified = docSnapshot['isVerified'];
 
         setState(() {
@@ -48,7 +52,37 @@ class _TrackStatusState extends State<TrackStatus> {
           _detailsSubmitted = true;
           _adminReviewing = true;
           _accountVerified = isVerified;
+          _accountDeleted = !isVerified;
         });
+
+        // If not verified, add to nonverifyCust collection
+        if (!isVerified) {
+          await FirebaseFirestore.instance
+              .collection('nonverifyCust')
+              .doc(docSnapshot.id)
+              .set(docSnapshot.data() as Map<String, dynamic>);
+        }
+      } else {
+        // Check nonverifyCust collection
+        QuerySnapshot nonVerifyQuerySnapshot = await FirebaseFirestore.instance
+            .collection('nonverifyCust')
+            .where('email', isEqualTo: email)
+            .get();
+
+        if (nonVerifyQuerySnapshot.docs.isNotEmpty) {
+          setState(() {
+            _statusMessage = "Account status tracked successfully.";
+            _detailsSubmitted = true;
+            _adminReviewing = true;
+            _accountVerified = false;
+            _accountDeleted = true;
+          });
+        } else {
+          _showDialog("Email Not Registered", "The email is not registered or does not exist. Please enter a registered email.");
+          setState(() {
+            _statusMessage = "Enter your email to track your account status.";
+          });
+        }
       }
     } catch (e) {
       print("Error tracking status: $e");
@@ -56,6 +90,26 @@ class _TrackStatusState extends State<TrackStatus> {
         _statusMessage = "An error occurred. Please try again.";
       });
     }
+  }
+
+  void _showDialog(String title, String content) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(content),
+          actions: <Widget>[
+            ElevatedButton(
+              child: Text("OK"),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -66,7 +120,7 @@ class _TrackStatusState extends State<TrackStatus> {
         automaticallyImplyLeading: false,
         centerTitle: true,
         title: Text(
-          "Track your Account Status",
+          "Status Page",
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -137,7 +191,7 @@ class _TrackStatusState extends State<TrackStatus> {
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Text(
-                      "Your Account Has Not been Verified",
+                      "Your Account Has been Rejected",
                       style: TextStyle(color: Colors.white),
                     ),
                   ),

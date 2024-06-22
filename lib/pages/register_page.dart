@@ -325,20 +325,41 @@ class _RegisterPageState extends State<RegisterPage> {
       // Add other fields as needed
     });
 
-    // Show success message
-    _showPopUpMessage('Registration Successful', 'You have successfully registered.');
-
-     // Navigate to the next screen
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => LoginPage(showRegisterPage: () {  },)),
-    );
+    // Show success message and navigate to login page
+    _showPopUpMessageOK('Successfully Registered', 'Check your account status at Status Page', navigateToLogin: true);
 
   } catch (e) {
     print("Registration failed: $e");
     _showPopUpMessage('Submission Failed', 'Registration failed. Please try again.');
   }
 }
+
+void _showPopUpMessageOK(String title, String message, {bool navigateToLogin = false}) {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              if (navigateToLogin) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => LoginPage(showRegisterPage: () {})),
+                );
+              }
+            },
+            child: Text('OK'),
+          ),
+        ],
+      );
+    },
+  );
+}
+
 
 
   bool _isValidEmail(String email) {

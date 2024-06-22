@@ -90,14 +90,47 @@ class _CarPlateNumberState extends State<CarPlateNumber> {
       _quantity += change;
     });
     try {
+      final carDoc = await FirebaseFirestore.instance
+          .collection('rentalCar')
+          .doc(widget.carId)
+          .get();
+      final currentAvailableQty = carDoc['availableQty'];
+      final newAvailableQty = currentAvailableQty + change;
       await FirebaseFirestore.instance
           .collection('rentalCar')
           .doc(widget.carId)
-          .update({'quantity': _quantity});
+          .update({'quantity': _quantity, 'availableQty': newAvailableQty});
       _loadPlateNumbers();
     } catch (e) {
       print('Error updating quantity: $e');
     }
+  }
+
+  Future<void> _confirmDelete(String plateNumberId) async {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Confirm Delete'),
+          content: Text('Are you sure you want to delete this plate number?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                _deletePlateNumber(plateNumberId);
+                Navigator.of(context).pop();
+              },
+              child: Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -164,7 +197,7 @@ class _CarPlateNumberState extends State<CarPlateNumber> {
                       IconButton(
                         icon: Icon(Icons.delete),
                         onPressed: () {
-                          _deletePlateNumber(_plateNumbers[index]['id']);
+                          _confirmDelete(_plateNumbers[index]['id']);
                         },
                       ),
                     ],

@@ -203,8 +203,6 @@ class _FuelPageState extends State<FuelPage> {
               SizedBox(height: 40),
               buildButton("Submit", _uploadImageAndSubmit),
               SizedBox(height: 10),
-              buildButton("Return", navigateToSessionPage),
-              SizedBox(height: 25),
             ],
           ),
         ),

@@ -239,16 +239,10 @@ class _HomePageState extends State<HomePage> {
                     itemBuilder: (BuildContext context, int index) {
                       var rentalCarData = snapshot.data!.docs[index].data() as Map<String, dynamic>;
                       return _buildRentalCarItem(
-                        rentalCarData['brand'],
-                        rentalCarData['carModel'],
-                        rentalCarData['carType'],
-                        rentalCarData['numberOfSeats'],
-                        rentalCarData['year'],
-                        rentalCarData['transmissionType'],
-                        rentalCarData['fuelTankCapacity'],
-                        rentalCarData['priceHour'],
+                        rentalCarData,
                         snapshot.data!.docs[index].id,
                         0, // Set availableQty to 0 to indicate locked state
+                        false, // Pass a flag to indicate the card is locked
                       );
                     },
                   );
@@ -277,16 +271,10 @@ class _HomePageState extends State<HomePage> {
                         var rentalCarData = availableCarsSnapshot.data![index].data() as Map<String, dynamic>;
 
                         return _buildRentalCarItem(
-                          rentalCarData['brand'],
-                          rentalCarData['carModel'],
-                          rentalCarData['carType'],
-                          rentalCarData['numberOfSeats'],
-                          rentalCarData['year'],
-                          rentalCarData['transmissionType'],
-                          rentalCarData['fuelTankCapacity'],
-                          rentalCarData['priceHour'],
+                          rentalCarData,
                           availableCarsSnapshot.data![index].id,
                           rentalCarData['availableQty'],
+                          true, // Pass a flag to indicate the card is unlocked
                         );
                       },
                     );
@@ -430,30 +418,11 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildRentalCarItem(
-    String brand,
-    String carModel,
-    String carType,
-    int numberOfSeats,
-    int year,
-    String transmissionType,
-    String fuelTankCapacity,
-    double priceHour,
-    String carId,
+    Map<String, dynamic> rentalCarData,
+    String documentId,
     int availableQty,
+    bool showAvailability,
   ) {
-    Map<String, dynamic> rentalCarData = {
-      'brand': brand,
-      'modelName': carModel,
-      'year': year,
-      'transmissionType': transmissionType,
-      'carType': carType,
-      'fuelTankCapacity': fuelTankCapacity,
-      'numSeats': numberOfSeats,
-      'priceHour': priceHour,
-      'carId': carId,
-      'availableQty': availableQty,
-    };
-
     return Card(
       elevation: 8,
       shape: RoundedRectangleBorder(
@@ -468,15 +437,16 @@ class _HomePageState extends State<HomePage> {
               MaterialPageRoute(
                 builder: (context) => CarDetailsPage(
                   brand: rentalCarData['brand'],
-                  modelName: rentalCarData['modelName'],
+                  modelName: rentalCarData['carModel'],
                   year: rentalCarData['year'],
                   transmissionType: rentalCarData['transmissionType'],
                   carType: rentalCarData['carType'],
                   fuelTankCapacity: rentalCarData['fuelTankCapacity'],
-                  numSeats: rentalCarData['numSeats'],
+                  numSeats: rentalCarData['numberOfSeats'],
                   priceHour: rentalCarData['priceHour'],
                   selectedDateTime: startDateTime,
-                  carId: rentalCarData['carId'],
+                  carId: documentId,
+                  carImage: rentalCarData['carImage'],
                 ),
               ),
             );
@@ -486,27 +456,30 @@ class _HomePageState extends State<HomePage> {
         } : null,
         splashColor: Colors.black,
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              'Brand: $brand',
-              style: TextStyle(fontSize: 16.0),
-            ),
-            Text(
-              'Model: $carModel',
-              style: TextStyle(fontSize: 16.0),
-            ),
-            Text(
-              'Type: $carType',
-              style: TextStyle(fontSize: 16.0),
-            ),
-            Text(
-              'Seats: $numberOfSeats',
-              style: TextStyle(fontSize: 16.0),
-            ),
-            Text(
-              'Available: $availableQty',
-              style: TextStyle(fontSize: 16.0, color: availableQty > 0 ? Colors.green : Colors.red),
+            if (rentalCarData['carImage'] != null && rentalCarData['carImage'].isNotEmpty)
+              Container(
+                height: 100,
+                child: Image.network(rentalCarData['carImage'], fit: BoxFit.cover),
+              ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${rentalCarData['brand']} ${rentalCarData['carModel']}',
+                      style: TextStyle(fontSize: 16.0),
+                    ),
+                    if (showAvailability)
+                      Text(
+                        'Available: $availableQty',
+                        style: TextStyle(fontSize: 16.0, color: availableQty > 0 ? Colors.green : Colors.red),
+                      ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),

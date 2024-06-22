@@ -473,6 +473,8 @@ class MoreCustDetailsPage extends StatelessWidget {
 
 
 
+
+
 class VerifyCustomerAccountsPage extends StatelessWidget {
   const VerifyCustomerAccountsPage({Key? key}) : super(key: key);
 
@@ -481,6 +483,14 @@ class VerifyCustomerAccountsPage extends StatelessWidget {
   }
 
   Future<void> _deleteAccount(String customerId) async {
+    // Fetch customer details from the 'customer' collection
+    DocumentSnapshot customerDoc = await FirebaseFirestore.instance.collection('customer').doc(customerId).get();
+    Map<String, dynamic> customerData = customerDoc.data() as Map<String, dynamic>;
+
+    // Add customer details to 'nonverifyCust' collection
+    await FirebaseFirestore.instance.collection('nonverifyCust').doc(customerId).set(customerData);
+
+    // Delete customer document from the 'customer' collection
     await FirebaseFirestore.instance.collection('customer').doc(customerId).delete();
   }
 
