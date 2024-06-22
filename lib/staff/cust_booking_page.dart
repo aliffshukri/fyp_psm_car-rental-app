@@ -24,51 +24,51 @@ class _CustomerBookingPageState extends State<CustomerBookingPage> {
   String _selectedFilter = 'Nearest Booking';
 
   void _showFilterOptions() {
-  showModalBottomSheet(
-    context: context,
-    builder: (context) {
-      return Container(
-        height: 300, // Set the height of the ListView here
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Text(
-                'Filter',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ),
-            Expanded(
-              child: Scrollbar(
-                thumbVisibility: true, // This makes the scrollbar always visible
-                child: ListView(
-                  children: <String>[
-                    'Nearest Booking',
-                    'Oldest Booking',
-                    'Status Upcoming',
-                    'Status Completed',
-                    'Status Completed (Pending Penalty Payment)',
-                    'Status Completed (Paid Penalty)',
-                  ].map((String value) {
-                    return ListTile(
-                      title: Text(value),
-                      onTap: () {
-                        setState(() {
-                          _selectedFilter = value;
-                        });
-                        Navigator.pop(context);
-                      },
-                    );
-                  }).toList(),
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Container(
+          height: 300, // Set the height of the ListView here
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  'Filter',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ),
-            ),
-          ],
-        ),
-      );
-    },
-  );
-}
+              Expanded(
+                child: Scrollbar(
+                  thumbVisibility: true, // This makes the scrollbar always visible
+                  child: ListView(
+                    children: <String>[
+                      'Nearest Booking',
+                      'Oldest Booking',
+                      'Status Upcoming',
+                      'Status Completed',
+                      'Status Completed (Pending Penalty Payment)',
+                      'Status Completed (Paid Penalty)',
+                    ].map((String value) {
+                      return ListTile(
+                        title: Text(value),
+                        onTap: () {
+                          setState(() {
+                            _selectedFilter = value;
+                          });
+                          Navigator.pop(context);
+                        },
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
 
   @override
@@ -356,12 +356,28 @@ class _CustomerBookingDetailsPageState extends State<CustomerBookingDetailsPage>
   bool _isUploading = false;
   late String status;
   late Color statusColor;
+  Map<String, dynamic>? fuelData;
 
   @override
   void initState() {
     super.initState();
     status = widget.initialStatus;
     statusColor = widget.initialStatusColor;
+    _fetchFuelData();
+  }
+
+  Future<void> _fetchFuelData() async {
+    final fuelSnapshot = await FirebaseFirestore.instance
+        .collection('booking')
+        .doc(widget.bookingId)
+        .collection('fuel')
+        .get();
+
+    if (fuelSnapshot.docs.isNotEmpty) {
+      setState(() {
+        fuelData = fuelSnapshot.docs.first.data();
+      });
+    }
   }
 
   Future<void> _pickFile() async {
@@ -536,6 +552,27 @@ class _CustomerBookingDetailsPageState extends State<CustomerBookingDetailsPage>
                 ],
               ),
             ),
+            if (fuelData != null) ...[
+              SizedBox(height: 20),
+              _buildSection(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionTitle('Fuel Details'),
+                    _buildDetailRow('Mileage', '${fuelData!['mileageNum']}'),
+                    _buildDetailRow('Fuel Bar', '${fuelData!['fuelBar']}'),
+                    _buildDetailRow('Refuel', fuelData!['isRefuel'] ? 'Yes' : 'No'),
+                    if (fuelData!['dashboardCar'] != null)
+                      GestureDetector(
+                        onTap: () => launch(fuelData!['dashboardCar']),
+                        child: Text('View Dashboard Image', style: TextStyle(color: Colors.blue)),
+                      )
+                    else
+                      Text('No Dashboard Image Available'),
+                  ],
+                ),
+              ),
+            ],
             if (status == 'Completed (Paid Penalty)') ...[
               SizedBox(height: 20),
               FutureBuilder<QuerySnapshot>(
@@ -641,4 +678,3 @@ class _CustomerBookingDetailsPageState extends State<CustomerBookingDetailsPage>
     );
   }
 }
-

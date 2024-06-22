@@ -10,7 +10,6 @@ import 'package:fyp_psm/staff/car_rental_page.dart';
 import 'package:fyp_psm/staff/cust_booking_page.dart';
 import 'package:fyp_psm/staff/report_page.dart';
 import 'package:fyp_psm/staff/custdetails_page.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class TrackPage extends StatefulWidget {
@@ -64,6 +63,9 @@ class _TrackPageState extends State<TrackPage> {
           }
 
           var ongoingBookings = snapshot.data!.docs;
+
+          // Filter out bookings where isTrackingEnabled is false
+          ongoingBookings = ongoingBookings.where((booking) => booking['isTrackingEnabled'] == true).toList();
 
           if (ongoingBookings.isEmpty) {
             return Center(
@@ -220,6 +222,8 @@ class _LiveTrackPageState extends State<LiveTrackPage> {
   final MapController _mapController = MapController();
   String? _latitude;
   String? _longitude;
+  bool _isTrackingEnabled = true;
+  StreamSubscription<DocumentSnapshot>? _subscription;
 
   @override
   void initState() {
@@ -230,27 +234,36 @@ class _LiveTrackPageState extends State<LiveTrackPage> {
   Future<void> _fetchInitialLocation() async {
     var status = await Permission.locationWhenInUse.request();
     if (status.isGranted) {
-      FirebaseFirestore.instance
+      _subscription = FirebaseFirestore.instance
           .collection('booking')
           .doc(widget.bookingId)
           .snapshots()
           .listen((bookingDoc) {
-        if (bookingDoc.exists) {
-          double initialLatitude = bookingDoc['currentLatitude'];
-          double initialLongitude = bookingDoc['currentLongitude'];
-
+        if (bookingDoc.exists && mounted) {
           setState(() {
-            _currentPosition = LatLng(initialLatitude, initialLongitude);
-            _latitude = initialLatitude.toString();
-            _longitude = initialLongitude.toString();
-          });
+            _isTrackingEnabled = bookingDoc['isTrackingEnabled'];
+            if (_isTrackingEnabled) {
+              double initialLatitude = bookingDoc['currentLatitude'];
+              double initialLongitude = bookingDoc['currentLongitude'];
 
-          _mapController.move(_currentPosition!, 15.0);
+              _currentPosition = LatLng(initialLatitude, initialLongitude);
+              _latitude = initialLatitude.toString();
+              _longitude = initialLongitude.toString();
+
+              _mapController.move(_currentPosition!, 15.0);
+            }
+          });
         }
       });
     } else if (status.isDenied || status.isPermanentlyDenied) {
       openAppSettings();
     }
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
   }
 
   @override
@@ -269,51 +282,58 @@ class _LiveTrackPageState extends State<LiveTrackPage> {
         elevation: 0,
         backgroundColor: Color.fromARGB(255, 173, 129, 80),
       ),
-      body: _currentPosition == null
-          ? Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                Expanded(
-                  child: FlutterMap(
-                    mapController: _mapController,
-                    options: MapOptions(
-                      center: _currentPosition,
-                      zoom: 15.0,
-                    ),
-                    children: [
-                      TileLayer(
-                        urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-                        subdomains: ['a', 'b', 'c'],
-                      ),
-                      MarkerLayer(
-                        markers: [
-                          Marker(
-                            width: 80.0,
-                            height: 80.0,
-                            point: _currentPosition!,
-                            child: Icon(Icons.location_pin, color: Colors.red, size: 40),
+      body: _isTrackingEnabled
+          ? (_currentPosition == null
+              ? Center(child: CircularProgressIndicator())
+              : Column(
+                  children: [
+                    Expanded(
+                      child: FlutterMap(
+                        mapController: _mapController,
+                        options: MapOptions(
+                          center: _currentPosition,
+                          zoom: 15.0,
+                        ),
+                        children: [
+                          TileLayer(
+                            urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                            subdomains: ['a', 'b', 'c'],
+                          ),
+                          MarkerLayer(
+                            markers: [
+                              Marker(
+                                width: 80.0,
+                                height: 80.0,
+                                point: _currentPosition!,
+                                child: Icon(Icons.location_pin, color: Colors.red, size: 40),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Column(
-                    children: [
-                      Text(
-                        "Latitude: ${_latitude ?? 'Loading...'}",
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Column(
+                        children: [
+                          Text(
+                            "Latitude: ${_latitude ?? 'Loading...'}",
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            "Longitude: ${_longitude ?? 'Loading...'}",
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                        ],
                       ),
-                      Text(
-                        "Longitude: ${_longitude ?? 'Loading...'}",
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+                    ),
+                  ],
+                ))
+          : Center(
+              child: Text(
+                'Customer Has Ended the Session',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
             ),
     );
   }

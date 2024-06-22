@@ -25,7 +25,7 @@ class _FuelPageState extends State<FuelPage> {
   final user = FirebaseAuth.instance.currentUser!;
 
   Future<void> _selectImage() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+    final XFile? image = await _picker.pickImage(source: ImageSource.camera);
 
     setState(() {
       _image = image != null ? File(image.path) : null;
@@ -41,13 +41,13 @@ class _FuelPageState extends State<FuelPage> {
   Future<void> _uploadImageAndSubmit() async {
     if (_image != null) {
       try {
-        String imageUrl =
-            await _uploadFileToStorage('dashboard_car.jpg', _image!);
+        String fileName = 'dashboard_images/${user.uid}/${DateTime.now().millisecondsSinceEpoch}.jpg';
+        String imageUrl = await _uploadFileToStorage(fileName, _image!);
 
         // Store the image URL and other details in Firestore
         await _storeDataInFirestore(imageUrl);
 
-         // Stop the tracking
+        // Stop the tracking
         await FirebaseFirestore.instance.collection('booking').doc(widget.bookingId).update({
           'isTrackingEnabled': false,
         });
@@ -87,8 +87,7 @@ class _FuelPageState extends State<FuelPage> {
 
   Future<String> _uploadFileToStorage(String fileName, File file) async {
     try {
-      Reference storageReference =
-          FirebaseStorage.instance.ref().child(fileName);
+      Reference storageReference = FirebaseStorage.instance.ref().child(fileName);
       await storageReference.putFile(file);
       return await storageReference.getDownloadURL();
     } catch (error) {
@@ -197,7 +196,7 @@ class _FuelPageState extends State<FuelPage> {
               ),
               SizedBox(height: 20),
               buildAttachmentButton(
-                "Upload The Dashboard Meter",
+                "Capture The Dashboard Meter",
                 _selectImage,
               ),
               SizedBox(height: 40),

@@ -418,74 +418,78 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildRentalCarItem(
-    Map<String, dynamic> rentalCarData,
-    String documentId,
-    int availableQty,
-    bool showAvailability,
-  ) {
-    return Card(
-      elevation: 8,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16.0),
-      ),
-      child: InkWell(
-        onTap: (selectedDate != null && selectedTime != null) ? () {
-          try {
-            DateTime startDateTime = DateFormat('yyyy-MM-dd hh:mm a').parse("${DateFormat('yyyy-MM-dd').format(selectedDate!)} $selectedTime");
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => CarDetailsPage(
-                  brand: rentalCarData['brand'],
-                  modelName: rentalCarData['carModel'],
-                  year: rentalCarData['year'],
-                  transmissionType: rentalCarData['transmissionType'],
-                  carType: rentalCarData['carType'],
-                  fuelTankCapacity: rentalCarData['fuelTankCapacity'],
-                  numSeats: rentalCarData['numberOfSeats'],
-                  priceHour: rentalCarData['priceHour'],
-                  selectedDateTime: startDateTime,
-                  carId: documentId,
-                  carImage: rentalCarData['carImage'],
-                ),
-              ),
-            );
-          } catch (e) {
-            print('Error parsing date and time: $e');
-          }
-        } : null,
-        splashColor: Colors.black,
-        child: Column(
-          children: [
-            if (rentalCarData['carImage'] != null && rentalCarData['carImage'].isNotEmpty)
-              Container(
-                height: 100,
-                child: Image.network(rentalCarData['carImage'], fit: BoxFit.cover),
-              ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${rentalCarData['brand']} ${rentalCarData['carModel']}',
-                      style: TextStyle(fontSize: 16.0),
-                    ),
-                    if (showAvailability)
-                      Text(
-                        'Available: $availableQty',
-                        style: TextStyle(fontSize: 16.0, color: availableQty > 0 ? Colors.green : Colors.red),
-                      ),
-                  ],
-                ),
+  Map<String, dynamic> rentalCarData,
+  String documentId,
+  int availableQty,
+  bool showAvailability,
+) {
+  return Card(
+    elevation: 8,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(16.0),
+    ),
+    child: InkWell(
+      onTap: (selectedDate != null && selectedTime != null) ? () {
+        try {
+          DateTime startDateTime = DateFormat('yyyy-MM-dd hh:mm a').parse("${DateFormat('yyyy-MM-dd').format(selectedDate!)} $selectedTime");
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CarDetailsPage(
+                brand: rentalCarData['brand'],
+                modelName: rentalCarData['carModel'],
+                year: rentalCarData['year'],
+                transmissionType: rentalCarData['transmissionType'],
+                carType: rentalCarData['carType'],
+                fuelTankCapacity: rentalCarData['fuelTankCapacity'],
+                numSeats: rentalCarData['numberOfSeats'],
+                priceHour: rentalCarData['priceHour'],
+                selectedDateTime: startDateTime,
+                carId: documentId,
+                carImage: rentalCarData['carImage'],
               ),
             ),
-          ],
-        ),
+          );
+        } catch (e) {
+          print('Error parsing date and time: $e');
+        }
+      } : null,
+      splashColor: Colors.black,
+      child: Column(
+        children: [
+          if (rentalCarData['carImage'] != null && rentalCarData['carImage'].isNotEmpty)
+            Container(
+            height: 85,
+            child: Image.network(
+              rentalCarData['carImage'], 
+              fit: BoxFit.cover
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${rentalCarData['brand']} ${rentalCarData['carModel']}',
+                    style: TextStyle(fontSize: 16.0),
+                  ),
+                  if (showAvailability)
+                    Text(
+                      'Available: $availableQty',
+                      style: TextStyle(fontSize: 16.0, color: availableQty > 0 ? Colors.green : Colors.red),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
+
 
   Widget _buildMenuItem(String title, IconData icon, VoidCallback onPressed) {
     return Card(

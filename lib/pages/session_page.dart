@@ -21,7 +21,6 @@ class _SessionPageState extends State<SessionPage> {
   DateTime? nearestBookingStart;
   String bookingId = "";
   final user = FirebaseAuth.instance.currentUser!;
-  bool _isTrackingEnabled = true;
   Timer? _timer;
 
   @override
@@ -83,8 +82,6 @@ class _SessionPageState extends State<SessionPage> {
     });
   }
 
-  
-
   @override
   Widget build(BuildContext context) {
     final sessionState = Provider.of<SessionState>(context);
@@ -135,7 +132,13 @@ class _SessionPageState extends State<SessionPage> {
                         ? null
                         : () async {
                             sessionState.startSession();
-                            await updateBookingStatus(bookingId, 'Ongoing');
+                            await FirebaseFirestore.instance.collection('booking').doc(bookingId).update({
+                              'status': 'Ongoing',
+                              'isTrackingEnabled': true,
+                              'currentLatitude': 0.0,
+                              'currentLongitude': 0.0,
+                            });
+                            _startTracking();
                           },
                     child: Text("Start Session"),
                   ),
@@ -317,7 +320,6 @@ class _SessionPageState extends State<SessionPage> {
     );
   }
 }
-
 
 class CountdownTimer extends StatefulWidget {
   final DateTime nearestBookingStart;

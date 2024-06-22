@@ -20,7 +20,7 @@ class ReportPage extends StatefulWidget {
 }
 
 class _ReportPageState extends State<ReportPage> {
-  String reportType = 'Booking';
+  String reportType = 'Car Rental';
   String frequency = 'Past 3 days';
   List<Map<String, dynamic>> reportData = [];
 
@@ -44,8 +44,8 @@ class _ReportPageState extends State<ReportPage> {
                   thumbVisibility: true, // This makes the scrollbar always visible
                   child: ListView(
                     children: <String>[
-                      'Booking',
-                      'Fuel Status',
+                      //'Booking',
+                      //'Fuel Status',
                       'Car Rental',
                       'Age Category',
                     ].map((String value) {
